@@ -24,12 +24,12 @@ export default function RegisterPage() {
   };
 
   return (
-    <main className="min-h-screen bg-fuchsia-pale flex items-center justify-center">
+    <main className="min-h-screen bg-fuchsia-400 flex items-center justify-center">
       <form
         onSubmit={handleRegister}
         className="bg-white p-8 rounded-xl w-full max-w-md space-y-4 shadow-lg"
       >
-        <h2 className="text-2xl font-bold text-center text-fuchsia-electric">
+        <h2 className="text-2xl font-bold text-center text-fuchsia-600">
           Sign Up
         </h2>
 
@@ -38,7 +38,7 @@ export default function RegisterPage() {
         <input
           type="text"
           placeholder="Full Name"
-          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-fuchsia-electric"
+          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-fuchsia-600"
           value={name}
           onChange={(e) => setName(e.target.value)}
           required
@@ -46,7 +46,7 @@ export default function RegisterPage() {
         <input
           type="email"
           placeholder="Email"
-          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-fuchsia-electric"
+          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-fuchsia-600"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -54,7 +54,7 @@ export default function RegisterPage() {
         <input
           type="password"
           placeholder="Password"
-          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-fuchsia-electric"
+          className="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-fuchsia-600"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -62,7 +62,7 @@ export default function RegisterPage() {
 
         <button
           type="submit"
-          className="w-full bg-fuchsia-electric text-white py-2 rounded hover:bg-fuchsia-pale"
+          className="w-full bg-fuchsia-600 text-white py-2 rounded hover:bg-fuchsia-400"
         >
           Create Account
         </button>
