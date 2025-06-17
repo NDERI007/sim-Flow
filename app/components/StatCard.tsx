@@ -5,9 +5,9 @@ type StatCardProps = {
 
 export default function StatCard({ title, value }: StatCardProps) {
   return (
-    <div className="bg-white shadow-md p-4 rounded-xl border-l-4 border-bg-fuchsia-electric">
+    <div className="border-bg-fuchsia-electric rounded-xl border-l-4 bg-white p-4 shadow-md">
       <h3 className="text-sm font-semibold text-gray-600">{title}</h3>
-      <p className="text-2xl font-bold text-bg-fuchsia-electric">{value}</p>
+      <p className="text-bg-fuchsia-electric text-2xl font-bold">{value}</p>
     </div>
   );
 }

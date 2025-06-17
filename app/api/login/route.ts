@@ -1,15 +1,17 @@
-import { NextResponse } from "next/server";
-import { signIn } from "next-auth/react";
+// app/api/login/route.ts
+import { NextResponse } from 'next/server';
+import { signIn } from 'next-auth/react';
 
 export async function POST(req: Request) {
   const { email, password } = await req.json();
 
-  const res = await signIn("credentials", {
-    redirect: false,
-    email,
-    password,
-  });
+  // ❌ NOTE: signIn from "next-auth/react" is client-side only.
+  // ✅ Use credentials directly in client instead, or use NextAuth endpoint.
 
-  if (res?.ok) return NextResponse.json({ success: true });
-  return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
+  return NextResponse.json(
+    {
+      error: "Use client-side signIn from 'next-auth/react' directly.",
+    },
+    { status: 400 },
+  );
 }
