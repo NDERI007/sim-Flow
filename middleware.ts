@@ -1,46 +1,42 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
+// middleware.ts
+//Next.js only recognizes middleware.ts (or .js) at the root level for it to work globally,
+//  based on the matcher config you define.
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import jwt from 'jsonwebtoken';
+
+const JWT_SECRET = process.env.JWT_SECRET!;
 
 export async function middleware(req: NextRequest) {
-  const token = await getToken({ req });
-  const pathname = req.nextUrl.pathname;
+  const { pathname } = req.nextUrl;
 
-  const url = req.nextUrl.clone();
+  const isAdminRoute = pathname.startsWith('/admin');
+  const isDashboardRoute = pathname.startsWith('/dashboard');
 
-  // Redirect logged-in users away from /login or /register
-  if (token && (pathname === "/login" || pathname === "/register")) {
-    url.pathname = token.role === "admin" ? "/admin" : "/dashboard";
-    return NextResponse.redirect(url);
+  const authHeader = req.headers.get('Authorization');
+  const token = authHeader?.split(' ')[1] || req.cookies.get('token')?.value;
+
+  if (!token) {
+    return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  // Protect /admin: only allow admins
-  if (pathname.startsWith("/admin")) {
-    if (!token) {
-      url.pathname = "/login"; // not logged in
-      return NextResponse.redirect(url);
-    }
-    if (token.role !== "admin") {
-      url.pathname = "/unAuth"; // logged in, but not admin
-      return NextResponse.redirect(url);
-    }
-  }
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET) as any;
 
-  // Protect /dashboard: only allow users
-  if (pathname.startsWith("/dashboard")) {
-    if (!token) {
-      url.pathname = "/login";
-      return NextResponse.redirect(url);
+    if (isAdminRoute && decoded.role !== 'admin') {
+      return NextResponse.redirect(new URL('/unAuth', req.url));
     }
-    if (token.role !== "user") {
-      url.pathname = "/unAuth";
-      return NextResponse.redirect(url);
-    }
-  }
 
-  return NextResponse.next();
+    if (isDashboardRoute && decoded.role !== 'user') {
+      return NextResponse.redirect(new URL('/unAuth', req.url));
+    }
+
+    return NextResponse.next();
+  } catch (err) {
+    return NextResponse.redirect(new URL('/login', req.url));
+  }
 }
 
 export const config = {
-  matcher: ["/login", "/register", "/dashboard/:path*", "/admin/:path*"],
+  matcher: ['/admin/:path*', '/dashboard/:path*'],
 };

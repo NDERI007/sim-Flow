@@ -1,51 +1,39 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import { signIn } from 'next-auth/react';
+import { useRouter } from 'next/navigation';
 import axios from '../lib/axios';
 
 export default function LoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const router = useRouter();
 
-  // ✅ Redirect if already logged in
+  // Auto-redirect if token exists
   useEffect(() => {
-    axios.get('/api/auth/session').then((res) => {
-      const role = res.data?.user?.role;
-      if (role) {
-        router.push(role === 'admin' ? '/admin' : '/dashboard');
-      }
-    });
+    const token = localStorage.getItem('token');
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+
+    if (token && user?.role) {
+      router.push(user.role === 'admin' ? '/admin' : '/dashboard');
+    }
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    const res = await signIn('credentials', {
-      email,
-      password,
-      redirect: false,
-    });
+    try {
+      const res = await axios.post('/api/login', { email, password });
+      const { token, user } = res.data;
 
-    if (res?.ok) {
-      try {
-        const sessionRes = await axios.get('/api/auth/session');
-        const role = sessionRes.data?.user?.role;
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify(user));
 
-        if (role) {
-          router.push(role === 'admin' ? '/admin' : '/dashboard');
-        } else {
-          setError('Could not get user role');
-        }
-      } catch (err: any) {
-        setError(err.response?.data?.error || 'Session check failed');
-      }
-    } else {
-      setError('Invalid credentials');
+      router.push(user.role === 'admin' ? '/admin' : '/dashboard');
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Login failed');
     }
   };
 
@@ -77,7 +65,6 @@ export default function LoginPage() {
           onChange={(e) => setPassword(e.target.value)}
           required
         />
-
         <button
           type="submit"
           className="w-full rounded bg-fuchsia-700 py-2 text-white hover:bg-fuchsia-500"
