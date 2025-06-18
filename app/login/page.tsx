@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from '../lib/axios';
+import { supabase } from '../lib/supabase';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -10,31 +11,34 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // Auto-redirect if token exists
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-
-    if (token && user?.role) {
-      router.push(user.role === 'admin' ? '/admin' : '/dashboard');
-    }
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.push('/dashboard'); // or /admin if you check role later
+    });
   }, []);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    try {
-      const res = await axios.post('/api/login', { email, password });
-      const { token, user } = res.data;
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-
-      router.push(user.role === 'admin' ? '/admin' : '/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed');
+    if (error) {
+      setError(error.message);
+      return;
     }
+
+    // Optional: fetch user role from your `users` table if needed
+    const { data: userRow } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', data.user.id)
+      .single();
+
+    const role = userRow?.role || 'user';
+    router.push(role === 'admin' ? '/admin' : '/dashboard');
   };
 
   return (
@@ -46,7 +50,6 @@ export default function LoginPage() {
         <h2 className="text-center text-2xl font-bold text-fuchsia-600">
           Login
         </h2>
-
         {error && <p className="text-center text-sm text-red-600">{error}</p>}
 
         <input

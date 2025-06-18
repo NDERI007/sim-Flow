@@ -1,42 +1,82 @@
-// middleware.ts
-//Next.js only recognizes middleware.ts (or .js) at the root level for it to work globally,
-//  based on the matcher config you define.
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import jwt from 'jsonwebtoken';
-
-const JWT_SECRET = process.env.JWT_SECRET!;
 
 export async function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+
+  // 🆕 Cookie jars for compatibility with Supabase future updates
+  const cookiesFromRequest = req.cookies;
+  const cookiesToSet: {
+    name: string;
+    value: string;
+    options?: CookieOptions;
+  }[] = [];
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() {
+          return cookiesFromRequest.getAll();
+        },
+        setAll(cookies) {
+          cookies.forEach(({ name, value, options }) => {
+            res.cookies.set({ name, value, ...options });
+          });
+        },
+      },
+    },
+  );
+
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
+
   const { pathname } = req.nextUrl;
+  const protectedRoutes = ['/dashboard', '/admin'];
+  const authRoutes = ['/login', '/register'];
 
-  const isAdminRoute = pathname.startsWith('/admin');
-  const isDashboardRoute = pathname.startsWith('/dashboard');
-
-  const authHeader = req.headers.get('Authorization');
-  const token = authHeader?.split(' ')[1] || req.cookies.get('token')?.value;
-
-  if (!token) {
+  if (!session && protectedRoutes.some((r) => pathname.startsWith(r))) {
     return NextResponse.redirect(new URL('/login', req.url));
   }
 
-  try {
-    const decoded = jwt.verify(token, JWT_SECRET) as any;
+  if (session && authRoutes.includes(pathname)) {
+    const { data } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
 
-    if (isAdminRoute && decoded.role !== 'admin') {
-      return NextResponse.redirect(new URL('/unAuth', req.url));
-    }
+    const role = data?.role;
 
-    if (isDashboardRoute && decoded.role !== 'user') {
-      return NextResponse.redirect(new URL('/unAuth', req.url));
-    }
-
-    return NextResponse.next();
-  } catch (err) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    return NextResponse.redirect(
+      new URL(role === 'admin' ? '/admin' : '/dashboard', req.url),
+    );
   }
+
+  if (session) {
+    const { data } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', session.user.id)
+      .single();
+
+    const role = data?.role;
+
+    if (pathname.startsWith('/admin') && role !== 'admin') {
+      return NextResponse.redirect(new URL('/unAuth', req.url));
+    }
+
+    if (pathname.startsWith('/dashboard') && role !== 'user') {
+      return NextResponse.redirect(new URL('/unAuth', req.url));
+    }
+  }
+
+  return res;
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/dashboard/:path*'],
+  matcher: ['/admin/:path*', '/dashboard/:path*', '/login', '/register'],
 };

@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from '../lib/axios';
+import { supabase } from '../lib/supabase';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -10,24 +10,43 @@ export default function RegisterPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  // 🔁 Auto-redirect if already logged in
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.push('/dashboard'); // or role-based route
+    });
+  }, [router]);
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
-    try {
-      await axios.post('/api/register', { email, password });
+    // 1. Sign up with email + password
+    const { data, error: signUpError } = await supabase.auth.signUp({
+      email,
+      password,
+    });
 
-      // Auto-login after registration
-      const loginRes = await axios.post('/api/login', { email, password });
-
-      const { token, user } = loginRes.data;
-      localStorage.setItem('token', token);
-      localStorage.setItem('user', JSON.stringify(user));
-
-      router.push(user.role === 'admin' ? '/admin' : '/dashboard');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Registration failed');
+    if (signUpError || !data.user) {
+      setError(signUpError?.message || 'Registration failed');
+      return;
     }
+
+    // 2. Insert additional user metadata (role, quota)
+    const { error: dbError } = await supabase.from('users').insert({
+      id: data.user.id,
+      email,
+      role: 'user',
+      quota: 1000,
+    });
+
+    if (dbError) {
+      setError('User created, but profile insert failed.');
+      return;
+    }
+
+    // 3. Redirect
+    router.push('/dashboard');
   };
 
   return (
@@ -39,7 +58,6 @@ export default function RegisterPage() {
         <h2 className="text-center text-2xl font-bold text-fuchsia-600">
           Register
         </h2>
-
         {error && <p className="text-center text-sm text-red-600">{error}</p>}
 
         <input
