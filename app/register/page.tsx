@@ -12,8 +12,20 @@ export default function RegisterPage() {
 
   // 🔁 Auto-redirect if already logged in
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.push('/dashboard'); // or role-based route
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        const { data } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        const role = data?.role; //If data is not null or undefined, then return data.role
+
+        //If data is null or undefined, don’t throw an error, just return undefined
+
+        router.push(role === 'admin' ? '/admin' : '/dashboard');
+      }
     });
   }, [router]);
 

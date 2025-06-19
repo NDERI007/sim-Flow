@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import LogOutButton from './LogOut';
 
 export default function UserSidebar() {
   const pathname = usePathname();
@@ -15,6 +16,7 @@ export default function UserSidebar() {
   return (
     <aside className="w-64 space-y-4 bg-fuchsia-100 p-6 text-fuchsia-900">
       <h2 className="text-xl font-bold">User Panel</h2>
+      <LogOutButton />
       <nav className="flex flex-col gap-2">
         {links.map(({ href, label }) => (
           <Link

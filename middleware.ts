@@ -3,7 +3,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function middleware(req: NextRequest) {
-  const res = NextResponse.next();
+  //runs before a request reaches a protected route. You define which routes it applies to at the bottom using matcher.
+  const res = NextResponse.next(); //Creates a default NextResponse, assuming the request should proceed (unless overridden by a redirect later).
 
   // 🆕 Cookie jars for compatibility with Supabase future updates
   const cookiesFromRequest = req.cookies;
@@ -14,7 +15,7 @@ export async function middleware(req: NextRequest) {
   }[] = [];
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_URL!, //The ! tells TypeScript: “I promise this env var is not undefined.”
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
@@ -22,6 +23,7 @@ export async function middleware(req: NextRequest) {
           return cookiesFromRequest.getAll();
         },
         setAll(cookies) {
+          //his is necessary because Next.js middleware or API routes must manually set cookies e.g updating sessions, refreshing tokens on the response — Supabase won’t do it automatically.
           cookies.forEach(({ name, value, options }) => {
             res.cookies.set({ name, value, ...options });
           });
@@ -31,7 +33,9 @@ export async function middleware(req: NextRequest) {
   );
 
   const {
-    data: { session },
+    data: { session }, //Fetches the current session (if the user is logged in).
+
+    //session will be null if the user is not authenticated.
   } = await supabase.auth.getSession();
 
   const { pathname } = req.nextUrl;
@@ -80,3 +84,14 @@ export async function middleware(req: NextRequest) {
 export const config = {
   matcher: ['/admin/:path*', '/dashboard/:path*', '/login', '/register'],
 };
+// a session is the object that:
+
+///Represents the current authentication state of a user.
+
+//Includes tokens used to authenticate API requests.
+
+//session is created after:
+
+//A user signs up or logs in.
+
+//It includes the access token and refresh token.

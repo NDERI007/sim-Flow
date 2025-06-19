@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import axios from '../lib/axios';
 import { supabase } from '../lib/supabase';
 
 export default function LoginPage() {
@@ -11,11 +10,25 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
+  // 🔁 Auto-redirect if already logged in
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session) router.push('/dashboard'); // or /admin if you check role later
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (user) {
+        const { data } = await supabase
+          .from('users')
+          .select('role')
+          .eq('id', user.id)
+          .single();
+
+        const role = data?.role; //If data is not null or undefined, then return data.role
+
+        //If data is null or undefined, don’t throw an error, just return undefined
+
+        router.push(role === 'admin' ? '/admin' : '/dashboard');
+      }
     });
-  }, []);
+  }, [router]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
