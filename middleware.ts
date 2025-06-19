@@ -39,14 +39,10 @@ export async function middleware(req: NextRequest) {
   } = await supabase.auth.getSession();
 
   const { pathname } = req.nextUrl;
-  const protectedRoutes = ['/dashboard', '/admin'];
-  const authRoutes = ['/login', '/register'];
+  const isAdminRoute = pathname.startsWith('/admin');
+  const isUserRoute = pathname.startsWith('/dashboard');
 
-  if (!session && protectedRoutes.some((r) => pathname.startsWith(r))) {
-    return NextResponse.redirect(new URL('/login', req.url));
-  }
-
-  if (session && authRoutes.includes(pathname)) {
+  if (session && (isAdminRoute || isUserRoute)) {
     const { data } = await supabase
       .from('users')
       .select('role')
@@ -55,25 +51,11 @@ export async function middleware(req: NextRequest) {
 
     const role = data?.role;
 
-    return NextResponse.redirect(
-      new URL(role === 'admin' ? '/admin' : '/dashboard', req.url),
-    );
-  }
-
-  if (session) {
-    const { data } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', session.user.id)
-      .single();
-
-    const role = data?.role;
-
-    if (pathname.startsWith('/admin') && role !== 'admin') {
+    if (isAdminRoute && role !== 'admin') {
       return NextResponse.redirect(new URL('/unAuth', req.url));
     }
 
-    if (pathname.startsWith('/dashboard') && role !== 'user') {
+    if (isUserRoute && role !== 'user') {
       return NextResponse.redirect(new URL('/unAuth', req.url));
     }
   }
@@ -82,7 +64,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/dashboard/:path*', '/login', '/register'],
+  matcher: ['/admin/:path*', '/dashboard/:path*'],
 };
 // a session is the object that:
 

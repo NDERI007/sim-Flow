@@ -1,6 +1,7 @@
 'use client';
 
 import { createBrowserClient } from '@supabase/ssr';
+import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function LogOutButton() {
@@ -19,8 +20,9 @@ export default function LogOutButton() {
   return (
     <button
       onClick={handleLogOut}
-      className="rounded-xl bg-fuchsia-600 px-4 py-2 text-white shadow-md transition hover:bg-fuchsia-700"
+      className="flex items-center rounded-xl bg-fuchsia-600 px-4 py-2 text-white shadow-md transition hover:bg-fuchsia-700"
     >
+      <LogOut size={20} />
       Logout
     </button>
   );

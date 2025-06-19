@@ -9,7 +9,6 @@ export default function AdminSidebar() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: 'Dashboard', href: '/admin' },
     { label: 'Messages', href: '/admin/messages' },
     { label: 'Users', href: '/admin/users' },
     { label: 'Settings', href: '/admin/settings' },
@@ -36,12 +35,6 @@ export default function AdminSidebar() {
           ))}
         </nav>
       </div>
-      <form method="post" action="/api/auth/signout">
-        <button className="flex items-center gap-2 rounded-lg px-3 py-2 hover:bg-white/10">
-          <LogOut className="h-4 w-4" />
-          Logout
-        </button>
-      </form>
     </aside>
   );
 }
