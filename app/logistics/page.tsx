@@ -65,9 +65,7 @@ export default function LogisticsPage() {
                       {msg.status}
                     </span>
                   </td>
-                  <td className="border px-4 py-2">
-                    {msg.created_at?.slice(0, 19)}
-                  </td>
+
                   <td className="border px-4 py-2">
                     {msg.sent_at?.slice(0, 19) || '-'}
                   </td>

@@ -78,7 +78,6 @@ export default function SendSmsPage() {
       await axios.post('/api/send-sms', {
         to_numbers: recipients,
         message,
-        user_id: userIdRef.current,
       });
 
       setStatus('success');

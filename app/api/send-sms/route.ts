@@ -1,49 +1,72 @@
 // /app/api/send-sms/route.ts
-import { createClient } from '@supabase/supabase-js';
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient, type CookieOptions } from '@supabase/ssr';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-);
+export async function POST(req: NextRequest) {
+  // ✅ Create Supabase client using request cookies
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!, // You’re using the service role key here (✅ server-only)
+    {
+      cookies: {
+        getAll: () => req.cookies.getAll(),
+        setAll: () => {},
+      },
+    },
+  );
 
-export async function POST(req: Request) {
-  const { to_numbers, message } = await req.json(); // ⬅️ Updated to use multiple recipients
-  const user_id = 'CLIENT_USER_ID'; // Replace with real user logic
+  // Step 1: Authenticated user
+  const {
+    data: { user },
+    error: authError,
+  } = await supabase.auth.getUser();
 
+  if (authError || !user) {
+    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+  }
+
+  const user_id = user?.id;
+  console.log('user_id:', user_id);
+  console.log('typeof user_id:', typeof user_id);
+
+  const body = await req.json();
+  const { to_numbers, message } = body;
+
+  // Step 2: Basic validation
   if (!Array.isArray(to_numbers) || to_numbers.length === 0 || !message) {
     return NextResponse.json({ message: 'Invalid input.' }, { status: 400 });
   }
 
+  // Step 3: Calculate SMS segments
   const segmentsPerMessage = Math.ceil((message.length || 0) / 160) || 1;
   const totalSegments = segmentsPerMessage * to_numbers.length;
+  console.log('Total segments to deduct:', totalSegments);
 
-  // Step 1: Check user quota
-  const { data: user, error: userError } = await supabase
-    .from('users')
-    .select('quota')
-    .eq('id', user_id)
-    .single();
+  // Step 4: Call PostgreSQL function to atomically deduct quota
+  const { error: quotaError } = await supabase.rpc('deduct_quota', {
+    uid: String(user_id),
+    amount: totalSegments,
+  });
+  console.error('RPC Quota Error:', quotaError?.message);
 
-  if (userError || !user) {
+  if (quotaError) {
     return NextResponse.json(
-      { message: 'User not found or quota error' },
-      { status: 400 },
+      {
+        message:
+          'Quota deduction failed (insufficient quota or race condition)',
+        error: quotaError.message,
+      },
+      { status: 409 },
     );
   }
 
-  if (user.quota < totalSegments) {
-    return NextResponse.json(
-      { message: 'Insufficient quota' },
-      { status: 403 },
-    );
-  }
-
-  // Step 2: Insert all messages
+  // Step 5: Queue messages
   const inserts = to_numbers.map((to: string) => ({
     to_number: to,
     message,
     status: 'queued',
+    segments: segmentsPerMessage,
+    user_id,
     created_at: new Date(),
   }));
 
@@ -53,24 +76,15 @@ export async function POST(req: Request) {
 
   if (insertError) {
     return NextResponse.json(
-      { message: 'Failed to queue messages' },
+      {
+        message: 'Messages not queued',
+        error: insertError.message,
+      },
       { status: 500 },
     );
   }
 
-  // Step 3: Deduct quota
-  const { error: quotaError } = await supabase
-    .from('users')
-    .update({ quota: user.quota - totalSegments })
-    .eq('id', user_id);
-
-  if (quotaError) {
-    return NextResponse.json(
-      { message: 'Messages sent but quota deduction failed' },
-      { status: 500 },
-    );
-  }
-
+  // ✅ Success
   return NextResponse.json({
     success: true,
     recipients: to_numbers.length,

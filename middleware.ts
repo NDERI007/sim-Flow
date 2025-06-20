@@ -23,7 +23,7 @@ export async function middleware(req: NextRequest) {
           return cookiesFromRequest.getAll();
         },
         setAll(cookies) {
-          //his is necessary because Next.js middleware or API routes must manually set cookies e.g updating sessions, refreshing tokens on the response — Supabase won’t do it automatically.
+          //This is necessary because Next.js middleware or API routes must manually set cookies e.g updating sessions, refreshing tokens on the response — Supabase won’t do it automatically.
           cookies.forEach(({ name, value, options }) => {
             res.cookies.set({ name, value, ...options });
           });

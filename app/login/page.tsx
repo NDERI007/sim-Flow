@@ -24,7 +24,7 @@ export default function LoginPage() {
 
         //If data is null or undefined, don’t throw an error, just return undefined
 
-        router.push(role === 'admin' ? '/admin' : '/dashboard');
+        router.push(role === 'admin' ? '/admin' : '/unAuth');
       }
     });
   }, [router]);

@@ -5,40 +5,48 @@ import { supabase } from '@/app/lib/supabase';
 
 export default function InvitePage() {
   const [email, setEmail] = useState('');
-  const [message, setMessage] = useState('');
+  const [inviteLink, setInviteLink] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    setMessage('');
+    setInviteLink('');
+    setLoading(true);
 
-    // 🧠 Check if email already invited
-    const { data: existing } = await supabase
-      .from('users')
+    // Check if invite already exists
+    const { data: existingInvite } = await supabase
+      .from('invites')
       .select('id')
       .eq('email', email)
+      .eq('used', false)
       .single();
 
-    if (existing) {
-      setError('This email is already invited.');
+    if (existingInvite) {
+      setInviteLink(
+        `${window.location.origin}/register?email=${encodeURIComponent(email)}`,
+      );
+      setLoading(false);
       return;
     }
 
-    const { error: insertError } = await supabase.from('users').insert({
+    // Create new invite
+    const { error: insertError } = await supabase.from('invites').insert({
       email,
       role: 'admin',
-      quota: 1000,
-      invited: true,
-      registered: false,
     });
 
     if (insertError) {
-      setError('Failed to invite user.');
-    } else {
-      setMessage('User invited successfully!');
-      setEmail('');
+      setError('Failed to create invite.');
+      setLoading(false);
+      return;
     }
+
+    const link = `${window.location.origin}/register?email=${encodeURIComponent(email)}`;
+    setInviteLink(link);
+    setEmail('');
+    setLoading(false);
   };
 
   return (
@@ -51,25 +59,36 @@ export default function InvitePage() {
           Invite Admin
         </h2>
 
-        {error && <p className="text-center text-sm text-red-600">{error}</p>}
-        {message && (
-          <p className="text-center text-sm text-green-600">{message}</p>
+        {error && <p className="text-center text-red-600">{error}</p>}
+        {inviteLink && (
+          <p className="text-sm break-words text-green-700">
+            Share this link: <br />
+            <a
+              href={inviteLink}
+              className="text-blue-600 underline"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {inviteLink}
+            </a>
+          </p>
         )}
 
         <input
           type="email"
           placeholder="Admin Email"
-          className="w-full rounded bg-gray-100 px-3 py-2 outline-none"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
+          className="w-full rounded bg-gray-100 px-3 py-2 outline-none"
           required
         />
 
         <button
           type="submit"
+          disabled={loading}
           className="w-full rounded bg-fuchsia-700 py-2 text-white hover:bg-fuchsia-500"
         >
-          Invite
+          {loading ? 'Inviting...' : 'Generate Invite Link'}
         </button>
       </form>
     </main>

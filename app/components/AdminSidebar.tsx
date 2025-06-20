@@ -2,16 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LogOut } from 'lucide-react';
 import LogOutButton from './LogOut';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
 
   const navItems = [
-    { label: 'Messages', href: '/admin/messages' },
-    { label: 'Users', href: '/admin/users' },
-    { label: 'Settings', href: '/admin/settings' },
+    { href: '/send', label: 'Send SMS' },
+    { href: '/logistics', label: 'Logistics' },
   ];
 
   return (
