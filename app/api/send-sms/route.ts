@@ -26,8 +26,6 @@ export async function POST(req: NextRequest) {
   }
 
   const user_id = user?.id;
-  console.log('user_id:', user_id);
-  console.log('typeof user_id:', typeof user_id);
 
   const body = await req.json();
   const { to_numbers, message } = body;
@@ -40,39 +38,41 @@ export async function POST(req: NextRequest) {
   // Step 3: Calculate SMS segments
   const segmentsPerMessage = Math.ceil((message.length || 0) / 160) || 1;
   const totalSegments = segmentsPerMessage * to_numbers.length;
-  console.log('Total segments to deduct:', totalSegments);
 
   // Step 4: Call PostgreSQL function to atomically deduct quota
   const { error: quotaError } = await supabase.rpc('deduct_quota', {
-    uid: String(user_id),
+    uid: user.id,
     amount: totalSegments,
   });
-  console.error('RPC Quota Error:', quotaError?.message);
 
   if (quotaError) {
     return NextResponse.json(
       {
-        message:
-          'Quota deduction failed (insufficient quota or race condition)',
+        message: 'Quota deduction failed',
         error: quotaError.message,
       },
       { status: 409 },
     );
   }
-
   // Step 5: Queue messages
   const inserts = to_numbers.map((to: string) => ({
     to_number: to,
     message,
     status: 'queued',
-    segments: segmentsPerMessage,
-    user_id,
-    created_at: new Date(),
+    sent_at: new Date(),
   }));
 
   const { error: insertError } = await supabase
     .from('messages')
     .insert(inserts);
+
+  console.log('Detailed insert error:', {
+    error: insertError,
+    message: insertError?.message,
+    details: insertError?.details,
+    hint: insertError?.hint,
+    code: insertError?.code,
+  });
 
   if (insertError) {
     return NextResponse.json(
