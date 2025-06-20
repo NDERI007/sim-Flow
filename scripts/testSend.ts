@@ -3,11 +3,18 @@ import { messageQueue } from '../lib/messageQueue';
 import 'dotenv/config';
 
 (async () => {
-  await messageQueue.add('send-sms', {
-    userId: 'USER_UUID_HERE',
-    to: '+254712345678',
-    content: 'Hello from test!',
-  });
+  await messageQueue.add(
+    'send-sms',
+    {
+      to_number: '+254712345678',
+      message: 'Hello from test!',
+    },
+    {
+      attempts: 1, // 👈 No retries
+      removeOnComplete: true,
+      removeOnFail: true,
+    },
+  );
 
   console.log('✅ Test message queued.');
 })();

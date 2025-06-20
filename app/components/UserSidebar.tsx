@@ -9,6 +9,8 @@ export default function UserSidebar() {
 
   const links = [
     { href: '/dashboard', label: 'Dashboard' },
+    { href: '/send', label: 'Send SMS' },
+    { href: '/logistics', label: 'Logistics' },
     { href: '/dashboard/messages', label: 'My Messages' },
     { href: '/dashboard/settings', label: 'Settings' },
   ];
