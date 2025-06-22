@@ -10,6 +10,7 @@ export default function AdminSidebar() {
   const navItems = [
     { href: '/send', label: 'Send SMS' },
     { href: '/logistics', label: 'Logistics' },
+    { href: '/contacts', label: 'Contact groups' },
   ];
 
   return (

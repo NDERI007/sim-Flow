@@ -1,3 +1,5 @@
+import Link from 'next/link';
+
 export default function Home() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-white p-6">
@@ -8,18 +10,18 @@ export default function Home() {
           beautiful dashboard.
         </p>
         <div className="space-x-4">
-          <a
+          <Link
             href="/login"
             className="inline-block rounded-lg bg-fuchsia-600 px-6 py-3 text-white shadow transition hover:opacity-90"
           >
             Login
-          </a>
-          <a
+          </Link>
+          <Link
             href="/register"
             className="inline-block rounded-lg bg-fuchsia-400 px-6 py-3 text-white shadow transition hover:opacity-90"
           >
             Register
-          </a>
+          </Link>
         </div>
       </div>
     </main>
