@@ -1,0 +1,60 @@
+// components/SendSms/ContactGroupSelector.tsx
+import { useContactGroupStore } from '../lib/smsStore';
+
+type ContactGroupSelectorProps = {
+  selectedGroupIds: string[];
+  onToggleGroup: (groupId: string) => void;
+};
+
+const ContactGroupSelector = ({
+  selectedGroupIds,
+  onToggleGroup,
+}: ContactGroupSelectorProps) => {
+  const contactGroups = useContactGroupStore((state) => state.groups);
+
+  if (contactGroups.length === 0) {
+    return (
+      <div className="rounded-xl bg-gray-50 py-8 text-center">
+        <div className="mb-2 text-4xl">📋</div>
+        <p className="font-medium text-gray-500">No contact groups available</p>
+        <p className="mt-1 text-sm text-gray-400">
+          Create groups first to use this feature
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+      {contactGroups.map((group) => {
+        const isSelected = selectedGroupIds.includes(group.id);
+        return (
+          <label
+            key={group.id}
+            className={`flex cursor-pointer items-center rounded-xl border-2 p-4 transition-all duration-200 hover:shadow-md ${
+              isSelected
+                ? 'border-purple-500 bg-purple-50 shadow-md'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <input
+              type="checkbox"
+              checked={isSelected}
+              onChange={() => onToggleGroup(group.id)}
+              className="h-4 w-4 rounded text-purple-600 focus:ring-purple-500"
+            />
+            <div className="ml-3">
+              <div className="font-medium text-gray-900">{group.name}</div>
+              <div className="text-sm text-gray-500">
+                {group.numbers.length} contact
+                {group.numbers.length !== 1 ? 's' : ''}
+              </div>
+            </div>
+          </label>
+        );
+      })}
+    </div>
+  );
+};
+
+export default ContactGroupSelector;

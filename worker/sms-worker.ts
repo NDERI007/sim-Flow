@@ -27,6 +27,22 @@ const smsWorker = new Worker(
     const { user_id, to, message } = job.data;
     const segments = Math.ceil((message.length || 0) / 160) || 1;
 
+    const { data, error: fetchError } = await supabase
+      .from('users')
+      .select('quota')
+      .eq('id', user_id)
+      .single();
+
+    if (fetchError || !data) {
+      throw new Error(`User quota check failed: ${fetchError?.message}`);
+    }
+
+    if (data.quota < segments) {
+      throw new Error(
+        `User has insufficient quota. Required: ${segments}, Available: ${data.quota}`,
+      );
+    }
+
     const { error: quotaError } = await supabase.rpc('deduct_quota', {
       uid: user_id,
       amount: segments,
