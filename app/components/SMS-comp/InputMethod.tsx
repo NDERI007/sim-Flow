@@ -1,17 +1,14 @@
-import React from 'react';
+import { useSmsStore, type InputMethod } from '@/app/lib/smsStore';
 
-const INPUT_METHODS = [
+const INPUT_METHODS: { label: string; value: InputMethod }[] = [
   { label: 'Manual Entry', value: 'manual' },
-  { label: 'Contact Groups', value: 'groups' },
-  { label: 'Both', value: 'both' },
+  { label: 'ContactGroup & manual entry', value: 'groups' },
 ];
 
-interface Props {
-  inputMethod: string;
-  onMethodChange: (method: string) => void;
-}
+const InputMethodSelector = () => {
+  const inputMethod = useSmsStore((s) => s.inputMethod);
+  const setInputMethod = useSmsStore((s) => s.setInputMethod);
 
-const InputMethodSelector = ({ inputMethod, onMethodChange }: Props) => {
   return (
     <div className="flex items-center justify-center gap-4">
       {INPUT_METHODS.map(({ label, value }) => (
@@ -23,7 +20,7 @@ const InputMethodSelector = ({ inputMethod, onMethodChange }: Props) => {
               ? 'border-purple-600 bg-purple-600 text-white'
               : 'border-gray-300 bg-white text-gray-800 hover:bg-gray-100'
           } `}
-          onClick={() => onMethodChange(value)}
+          onClick={() => setInputMethod(value)}
         >
           {label}
         </button>

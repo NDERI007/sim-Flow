@@ -1,16 +1,14 @@
-// components/SendSms/ContactGroupSelector.tsx
-import { useContactGroupStore } from '../lib/smsStore';
+import { useSmsStore } from '@/app/lib/smsStore';
+import { useContactGroupStore } from '@/app/lib/smsStore'; // Adjust the path if needed
 
-type ContactGroupSelectorProps = {
-  selectedGroupIds: string[];
-  onToggleGroup: (groupId: string) => void;
-};
-
-const ContactGroupSelector = ({
-  selectedGroupIds,
-  onToggleGroup,
-}: ContactGroupSelectorProps) => {
+const ContactGroupSelector = () => {
   const contactGroups = useContactGroupStore((state) => state.groups);
+  const selectedGroups = useSmsStore((state) => state.selectedGroup);
+  const toggleGroup = useSmsStore((state) => state.toggleGroup);
+  const inputMethod = useSmsStore((state) => state.inputMethod);
+
+  const shouldShow = inputMethod === 'groups' || inputMethod === 'both';
+  if (!shouldShow) return null;
 
   if (contactGroups.length === 0) {
     return (
@@ -27,7 +25,7 @@ const ContactGroupSelector = ({
   return (
     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
       {contactGroups.map((group) => {
-        const isSelected = selectedGroupIds.includes(group.id);
+        const isSelected = selectedGroups.some((g) => g.id === group.id);
         return (
           <label
             key={group.id}
@@ -40,14 +38,14 @@ const ContactGroupSelector = ({
             <input
               type="checkbox"
               checked={isSelected}
-              onChange={() => onToggleGroup(group.id)}
+              onChange={() => toggleGroup(group)}
               className="h-4 w-4 rounded text-purple-600 focus:ring-purple-500"
             />
             <div className="ml-3">
               <div className="font-medium text-gray-900">{group.name}</div>
               <div className="text-sm text-gray-500">
-                {group.numbers.length} contact
-                {group.numbers.length !== 1 ? 's' : ''}
+                {group.contacts.length} contact
+                {group.contacts.length !== 1 ? 's' : ''}
               </div>
             </div>
           </label>

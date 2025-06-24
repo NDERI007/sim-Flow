@@ -2,6 +2,7 @@
 
 import { useContactGroupStore, type ContactGroup } from '@/app/lib/smsStore';
 import ContactGroupCard from './contact-card';
+import { useEffect } from 'react';
 
 interface Props {
   groups: ContactGroup[];
@@ -9,7 +10,12 @@ interface Props {
 }
 
 export default function ContactGroupList({ onEdit }: Props) {
-  const { groups, loading } = useContactGroupStore();
+  const { fetchGroups, groups, loading } = useContactGroupStore();
+  useEffect(() => {
+    fetchGroups();
+    console.log('Component mounted');
+    // 👈 This must run on page load
+  }, []);
 
   if (loading) return <p>Loading groups...</p>;
   if (groups.length === 0) return <p>No contact groups found.</p>;

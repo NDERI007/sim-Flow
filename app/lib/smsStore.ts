@@ -19,7 +19,7 @@ type ContactGroupStore = {
   groups: ContactGroup[];
   loading: boolean;
   error: string | null;
-  fetchGroups: (userId: string) => Promise<void>;
+  fetchGroups: () => Promise<void>;
   addOrUpdateGroup: (group: ContactGroup) => void;
   removeGroup: (id: string) => void;
   clearContactGroups: () => void;
@@ -29,12 +29,22 @@ export const useContactGroupStore = create<ContactGroupStore>((set, get) => ({
   groups: [],
   loading: false,
   error: null,
-  fetchGroups: async (userId) => {
+  fetchGroups: async () => {
+    console.log('fetchGroups called');
     set({ loading: true, error: null });
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      set({ error: 'Not authenticated', loading: false });
+      return;
+    }
     const { data, error } = await supabase
       .from('contact_groups')
       .select('*')
-      .eq('user_id', userId);
+      .eq('user_id', user.id);
 
     if (error) {
       set({ error: error.message, loading: false });
@@ -59,12 +69,12 @@ export const useContactGroupStore = create<ContactGroupStore>((set, get) => ({
   clearContactGroups: () => set({ groups: [] }),
 }));
 
-type InputMethod = 'manual' | 'groups' | 'both';
+export type InputMethod = 'manual' | 'groups' | 'both';
 
 interface SmsState {
   inputMethod: InputMethod;
   manualNumbers: string;
-  selectedGroupIds: string[];
+  selectedGroup: ContactGroup[];
   message: string;
   validationResult: ValidationResult | null;
   isSubmitting: boolean;
@@ -74,7 +84,7 @@ interface SmsState {
 
   setInputMethod: (method: InputMethod) => void;
   setManualNumbers: (numbers: string) => void;
-  toggleGroup: (groupId: string) => void;
+  toggleGroup: (group: ContactGroup) => void;
   setMessage: (message: string) => void;
   setValidationResult: (result: ValidationResult | null) => void;
   setStatus: (status: SmsState['status'], error?: string | null) => void;
@@ -86,7 +96,7 @@ interface SmsState {
 export const useSmsStore = create<SmsState>((set) => ({
   inputMethod: 'manual',
   manualNumbers: '',
-  selectedGroupIds: [],
+  selectedGroup: [],
   message: '',
   validationResult: null,
   isSubmitting: false,
@@ -96,23 +106,24 @@ export const useSmsStore = create<SmsState>((set) => ({
 
   setInputMethod: (method) => set({ inputMethod: method }),
   setManualNumbers: (numbers) => set({ manualNumbers: numbers }),
-  toggleGroup: (groupId) =>
+  toggleGroup: (group) =>
     set((state) => {
-      const exists = state.selectedGroupIds.includes(groupId);
+      const exists = state.selectedGroup.includes(group);
       return {
-        selectedGroupIds: exists
-          ? state.selectedGroupIds.filter((id) => id !== groupId)
-          : [...state.selectedGroupIds, groupId],
+        selectedGroup: exists
+          ? state.selectedGroup.filter((id) => id !== group)
+          : [...state.selectedGroup, group],
       };
     }),
   setMessage: (message) => set({ message }),
+
   setValidationResult: (result) => set({ validationResult: result }),
   setStatus: (status, error = null) => set({ status, error }),
   setSubmitting: (submitting) => set({ isSubmitting: submitting }),
   resetForm: () =>
     set({
       manualNumbers: '',
-      selectedGroupIds: [],
+      selectedGroup: [],
       message: '',
       validationResult: null,
       isSubmitting: false,

@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/app/lib/supabase';
+import { useUserData } from '@/app/lib/UserData';
 import { type ContactGroup } from '@/app/lib/smsStore';
 
 interface Props {
-  userId: string;
   editingGroup: ContactGroup | null;
   setEditingGroup: (group: ContactGroup | null) => void;
   onClose: () => void;
@@ -13,12 +13,13 @@ interface Props {
 }
 
 export default function ContactGroupForm({
-  userId,
   editingGroup,
   setEditingGroup,
   onClose,
   onRefresh,
 }: Props) {
+  const { user, loading: userLoading } = useUserData();
+
   const [formData, setFormData] = useState({ name: '', contacts: '' });
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -34,6 +35,12 @@ export default function ContactGroupForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (userLoading) return;
+    if (!user) {
+      setMessage('❌ You must be logged in to perform this action.');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
 
@@ -58,7 +65,7 @@ export default function ContactGroupForm({
         const { error } = await supabase.from('contact_groups').insert({
           name: formData.name,
           contacts,
-          user_id: userId,
+          user_id: user.id, // 👈 Must match auth.uid() for RLS
         });
 
         if (error) throw error;
@@ -77,7 +84,7 @@ export default function ContactGroupForm({
   };
 
   return (
-    <div className="mb-8 rounded-2xl border bg-white p-6 shadow-xl">
+    <div className="mb-8 rounded-2xl bg-gray-100 p-6 shadow-xl">
       <h2 className="mb-6 text-2xl font-semibold">
         {editingGroup ? 'Edit Group' : 'Create New Group'}
       </h2>
@@ -102,7 +109,7 @@ export default function ContactGroupForm({
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, name: e.target.value }))
             }
-            className="w-full rounded-xl border px-4 py-3 focus:ring-2 focus:ring-purple-500"
+            className="w-full rounded-xl bg-gray-200 px-4 py-3 outline-none"
             placeholder="e.g. Marketing Team"
           />
         </div>
@@ -117,7 +124,7 @@ export default function ContactGroupForm({
             onChange={(e) =>
               setFormData((prev) => ({ ...prev, contacts: e.target.value }))
             }
-            className="h-32 w-full rounded-xl border px-4 py-3 focus:ring-2 focus:ring-purple-500"
+            className="h-32 w-full rounded-xl bg-gray-200 px-4 py-3 outline-none"
             placeholder="Separate numbers with commas or new lines"
           />
         </div>
@@ -125,7 +132,7 @@ export default function ContactGroupForm({
         <div className="flex gap-4">
           <button
             type="submit"
-            disabled={loading}
+            disabled={loading || userLoading}
             className="flex-1 rounded-xl bg-purple-600 py-3 text-white shadow-lg hover:scale-105 disabled:opacity-50"
           >
             {loading
