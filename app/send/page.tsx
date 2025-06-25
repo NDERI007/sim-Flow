@@ -4,8 +4,7 @@ import { useState } from 'react';
 import { useSmsStore } from '@/app/lib/smsStore';
 import InputMethodSelector from '../components/SMS-comp/InputMethod';
 import ContactGroupSelector from '../components/SMS-comp/ContactSelcector';
-import ValidationSummary from '../components/SMS-comp/ValidSum';
-import { supabase } from '@/app/lib/supabase';
+
 import axios from 'axios';
 
 export default function SendSmsPage() {
@@ -17,8 +16,13 @@ export default function SendSmsPage() {
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState('');
 
+  const parsedManualNumbers = manualNumbers
+    .split(/[\n,]+/) // split on commas or new lines
+    .map((num) => num.trim())
+    .filter((num) => num !== '');
+
   const allRecipients = [
-    ...manualNumbers,
+    ...parsedManualNumbers,
     ...selectedGroup.flatMap((g) => g.contacts),
   ];
 
@@ -37,7 +41,7 @@ export default function SendSmsPage() {
         to_numbers: allRecipients,
         message,
       });
-      console.log({ message, allRecipients });
+      console.log(res);
 
       if (res.status !== 200) {
         throw new Error(res.data?.error || 'Failed to send SMS');

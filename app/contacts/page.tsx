@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import ContactGroupForm from '../components/Contact-comp/contact-form';
 import ContactGroupList from '../components/Contact-comp/Group-list';
@@ -11,32 +11,6 @@ export default function ContactGroupsPage() {
   const { groups, error, isLoading, mutate } = useContactGroups(); // ✅ cleaner
   const [showForm, setShowForm] = useState(false);
   const [editingGroup, setEditingGroup] = useState<ContactGroup | null>(null);
-
-  // Supabase real-time updates
-  useEffect(() => {
-    const channel = supabase
-      .channel('public:contact_groups')
-      .on(
-        'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'contact_groups' },
-        () => mutate(),
-      )
-      .on(
-        'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'contact_groups' },
-        () => mutate(),
-      )
-      .on(
-        'postgres_changes',
-        { event: 'DELETE', schema: 'public', table: 'contact_groups' },
-        () => mutate(),
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [mutate]);
 
   const handleEdit = (group: ContactGroup) => {
     setEditingGroup(group);
@@ -79,13 +53,7 @@ export default function ContactGroupsPage() {
       {/* Groups List */}
       {isLoading && <p>Loading...</p>}
       {error && <p className="text-red-500">{error.message}</p>}
-      {groups && (
-        <ContactGroupList
-          groups={groups}
-          onEdit={handleEdit}
-          onDelete={handleDelete}
-        />
-      )}
+      {groups && <ContactGroupList groups={groups} onEdit={handleEdit} />}
     </div>
   );
 }

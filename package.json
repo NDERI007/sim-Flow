@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "worker": "ts-node workers/sms-worker.ts"
+    "worker": "ts-node worker/sms-worker.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",

@@ -44,6 +44,7 @@ export async function POST(req: NextRequest) {
   }
 
   const body = await req.json();
+  console.log('📦 Received body:', body);
   const { to_numbers, message } = body;
 
   if (!Array.isArray(to_numbers) || to_numbers.length === 0 || !message) {

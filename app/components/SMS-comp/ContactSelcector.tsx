@@ -1,16 +1,29 @@
+import { useContactGroups } from '@/app/lib/contactGroup';
 import { useSmsStore } from '@/app/lib/smsStore';
-import { useContactGroupStore } from '@/app/lib/smsStore'; // Adjust the path if needed
+import useSWR from 'swr';
 
 const ContactGroupSelector = () => {
-  const contactGroups = useContactGroupStore((state) => state.groups);
+  const { groups, error, isLoading } = useContactGroups();
   const selectedGroups = useSmsStore((state) => state.selectedGroup);
   const toggleGroup = useSmsStore((state) => state.toggleGroup);
   const inputMethod = useSmsStore((state) => state.inputMethod);
 
   const shouldShow = inputMethod === 'groups' || inputMethod === 'both';
   if (!shouldShow) return null;
+  if (isLoading) {
+    return <p className="text-sm text-gray-400">Loading contact groups...</p>;
+  }
 
-  if (contactGroups.length === 0) {
+  if (error) {
+    return (
+      <p className="text-sm text-red-500">
+        Error loading contact groups: {error.message}
+      </p>
+    );
+  }
+
+  if (!groups) return <p>Loading...</p>;
+  if (groups.length === 0) {
     return (
       <div className="rounded-xl bg-gray-50 py-8 text-center">
         <div className="mb-2 text-4xl">📋</div>
@@ -24,7 +37,7 @@ const ContactGroupSelector = () => {
 
   return (
     <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-      {contactGroups.map((group) => {
+      {groups.map((group) => {
         const isSelected = selectedGroups.some((g) => g.id === group.id);
         return (
           <label

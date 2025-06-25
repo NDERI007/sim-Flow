@@ -1,23 +1,33 @@
 'use client';
 
 import type { ContactGroup } from '@/app/lib/smsStore';
+import { supabase } from '@/app/lib/supabase';
+import { mutate } from 'swr';
 
 interface ContactGroupCardProps {
   group: ContactGroup;
   onEdit: (group: ContactGroup) => void;
-  onDelete: (groupId: string) => void;
 }
 
 export default function ContactGroupCard({
   group,
   onEdit,
-  onDelete,
 }: ContactGroupCardProps) {
-  const handleDelete = () => {
+  const handleDelete = async () => {
     const confirmDelete = confirm(`Delete group "${group.name}"?`);
-    if (confirmDelete) {
-      onDelete(group.id);
+    if (!confirmDelete) return;
+    // Step 1: Delete from Supabase
+    const { error } = await supabase
+      .from('contact_groups')
+      .delete()
+      .eq('id', group.id);
+
+    if (error) {
+      alert(`❌ Failed to delete: ${error.message}`);
+      return;
     }
+
+    await mutate('contact-groups');
   };
 
   return (
@@ -49,7 +59,7 @@ export default function ContactGroupCard({
       <div className="flex gap-2">
         <button
           onClick={() => onEdit(group)}
-          className="flex-1 rounded-full bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-600"
+          className="flex-1 rounded-full bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-zinc-950"
         >
           Edit
         </button>
