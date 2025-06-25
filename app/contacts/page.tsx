@@ -1,14 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { supabase } from '../lib/supabase';
 import ContactGroupForm from '../components/Contact-comp/contact-form';
 import ContactGroupList from '../components/Contact-comp/Group-list';
 import { useContactGroups } from '../lib/contactGroup'; // ✅ use the custom hook
 import { ContactGroup } from '../lib/smsStore';
 
 export default function ContactGroupsPage() {
-  const { groups, error, isLoading, mutate } = useContactGroups(); // ✅ cleaner
+  const { groups, error, isLoading } = useContactGroups(); // ✅ cleaner
   const [showForm, setShowForm] = useState(false);
   const [editingGroup, setEditingGroup] = useState<ContactGroup | null>(null);
 
@@ -20,13 +19,6 @@ export default function ContactGroupsPage() {
   const handleNewGroup = () => {
     setEditingGroup(null);
     setShowForm(true);
-  };
-  const handleDelete = async (id: string) => {
-    const { error } = await supabase
-      .from('contact_groups')
-      .delete()
-      .eq('id', id);
-    if (!error) mutate(); // re-fetch with SWR
   };
 
   return (

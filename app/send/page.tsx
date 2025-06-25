@@ -57,7 +57,7 @@ export default function SendSmsPage() {
   };
 
   return (
-    <div className="space-y-8 rounded-xl bg-white p-6 shadow-xl">
+    <div className="max-w-4xl space-y-8 p-6">
       <h1 className="text-2xl font-semibold text-gray-800">Send SMS</h1>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -76,7 +76,7 @@ export default function SendSmsPage() {
             value={manualNumbers}
             onChange={(e) => setManualNumbers(e.target.value)}
             placeholder="Enter phone numbers separated by commas or new lines"
-            className="w-full rounded-xl border px-4 py-3 text-sm focus:ring-2 focus:ring-purple-500 focus:outline-none"
+            className="w-full rounded-xl bg-gray-100 px-4 py-3 text-sm outline-none"
             rows={5}
           />
           <label className="mb-2 block text-sm font-medium text-gray-700">
@@ -86,7 +86,7 @@ export default function SendSmsPage() {
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             required
-            className="w-full rounded-lg border border-gray-300 p-3 focus:ring-2 focus:ring-purple-500 focus:outline-none"
+            className="w-full rounded-lg bg-gray-100 p-3 outline-none"
             rows={5}
             placeholder="Type your message here..."
           />

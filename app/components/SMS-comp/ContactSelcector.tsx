@@ -1,6 +1,5 @@
 import { useContactGroups } from '@/app/lib/contactGroup';
 import { useSmsStore } from '@/app/lib/smsStore';
-import useSWR from 'swr';
 
 const ContactGroupSelector = () => {
   const { groups, error, isLoading } = useContactGroups();
