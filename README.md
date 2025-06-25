@@ -27,10 +27,41 @@ To learn more about Next.js, take a look at the following resources:
 - [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
 - [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# 📡 SendSMS Gateway
 
-## Deploy on Vercel
+A fast, reliable, and developer-friendly SMS gateway built with **Next.js**, **BullMQ**, and **ioredis**.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 🚀 Overview
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+SendSMS Gateway is designed to help **businesses** easily send bulk SMS to their clients — whether for marketing, notifications, or alerts — with **minimal setup** and **maximum reliability**.
+
+This gateway abstracts away the hassle of rate-limiting, queuing, retries, and third-party SMS provider integration, making it perfect for teams who want a plug-and-play solution.
+
+## 🏗️ Tech Stack
+
+- **Next.js** – API endpoints and frontend
+- **BullMQ** – Task queue for managing SMS delivery jobs
+- **ioredis** – Redis client used for storing queues and job states
+- **Upstash Redis** – Queue backend
+- **Third-party SMS provider** – Onfon, for actual SMS delivery
+
+## ✨ Features
+
+- 📤 Send SMS to individual or multiple contacts
+- 📋 Contact group management
+- ⏱️ Queue-based delivery with retries
+- 📊 Track job status (pending, completed, failed)
+- ⚙️ Easy to integrate into your business or existing app
+- 🔐 Auth-ready (can be extended to support RBAC)
+- 📱 Built for scale — handles thousands of messages
+
+## 🧠 Use Case
+
+Perfect for:
+
+- Small-to-medium businesses needing affordable SMS outreach
+- CRM tools integrating SMS follow-ups
+- Schools, health centers, or SACCOs sending timely notifications
+- Developers who want full control over queue-based SMS dispatching
+
+Made with 💜 for teams who just want to send that SMS. ## Psalms 118:24
