@@ -1,24 +1,42 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useContactGroupStore, type ContactGroup } from '@/app/lib/smsStore';
+import { supabase } from '../lib/supabase';
 import ContactGroupForm from '../components/Contact-comp/contact-form';
 import ContactGroupList from '../components/Contact-comp/Group-list';
+import { useContactGroups } from '../lib/contactGroup'; // ✅ use the custom hook
+import { ContactGroup } from '../lib/smsStore';
 
-interface Props {
-  userId: string;
-}
-
-export default function ContactGroupsPage({ userId }: Props) {
-  const { groups, loading, fetchGroups } = useContactGroupStore();
-
+export default function ContactGroupsPage() {
+  const { groups, error, isLoading, mutate } = useContactGroups(); // ✅ cleaner
   const [showForm, setShowForm] = useState(false);
   const [editingGroup, setEditingGroup] = useState<ContactGroup | null>(null);
 
-  // Fetch contact groups when the component mounts
+  // Supabase real-time updates
   useEffect(() => {
-    if (userId) fetchGroups(userId);
-  }, [userId, fetchGroups]);
+    const channel = supabase
+      .channel('public:contact_groups')
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'contact_groups' },
+        () => mutate(),
+      )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'contact_groups' },
+        () => mutate(),
+      )
+      .on(
+        'postgres_changes',
+        { event: 'DELETE', schema: 'public', table: 'contact_groups' },
+        () => mutate(),
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [mutate]);
 
   const handleEdit = (group: ContactGroup) => {
     setEditingGroup(group);
@@ -28,6 +46,13 @@ export default function ContactGroupsPage({ userId }: Props) {
   const handleNewGroup = () => {
     setEditingGroup(null);
     setShowForm(true);
+  };
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase
+      .from('contact_groups')
+      .delete()
+      .eq('id', id);
+    if (!error) mutate(); // re-fetch with SWR
   };
 
   return (
@@ -45,19 +70,21 @@ export default function ContactGroupsPage({ userId }: Props) {
       {/* Form */}
       {showForm && (
         <ContactGroupForm
-          userId={userId}
           editingGroup={editingGroup}
           setEditingGroup={setEditingGroup}
           onClose={() => setShowForm(false)}
-          onRefresh={() => fetchGroups(userId)}
         />
       )}
 
-      {/* Groups */}
-      {loading ? (
-        <p className="text-gray-500">Loading groups...</p>
-      ) : (
-        <ContactGroupList groups={groups} onEdit={handleEdit} />
+      {/* Groups List */}
+      {isLoading && <p>Loading...</p>}
+      {error && <p className="text-red-500">{error.message}</p>}
+      {groups && (
+        <ContactGroupList
+          groups={groups}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
       )}
     </div>
   );

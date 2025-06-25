@@ -2,23 +2,23 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/app/lib/supabase';
-import { useUserData } from '@/app/lib/UserData';
 import { type ContactGroup } from '@/app/lib/smsStore';
+import { useAuthStore } from '@/app/lib/AuthStore'; // ✅ use new store
+import { mutate } from 'swr';
 
 interface Props {
   editingGroup: ContactGroup | null;
   setEditingGroup: (group: ContactGroup | null) => void;
   onClose: () => void;
-  onRefresh: () => void;
 }
 
 export default function ContactGroupForm({
   editingGroup,
   setEditingGroup,
   onClose,
-  onRefresh,
 }: Props) {
-  const { user, loading: userLoading } = useUserData();
+  const { user } = useAuthStore(); // ✅ pull user from store
+  const userId = user?.id;
 
   const [formData, setFormData] = useState({ name: '', contacts: '' });
   const [loading, setLoading] = useState(false);
@@ -30,14 +30,16 @@ export default function ContactGroupForm({
         name: editingGroup.name,
         contacts: editingGroup.contacts.join('\n'),
       });
+    } else {
+      setFormData({ name: '', contacts: '' });
     }
   }, [editingGroup]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (userLoading) return;
-    if (!user) {
-      setMessage('❌ You must be logged in to perform this action.');
+
+    if (!userId) {
+      setMessage('❌ You must be logged in.');
       return;
     }
 
@@ -57,7 +59,8 @@ export default function ContactGroupForm({
             name: formData.name,
             contacts,
           })
-          .eq('id', editingGroup.id);
+          .eq('id', editingGroup.id)
+          .eq('user_id', userId); // ✅ extra safety check
 
         if (error) throw error;
         setMessage('✅ Group updated!');
@@ -65,7 +68,7 @@ export default function ContactGroupForm({
         const { error } = await supabase.from('contact_groups').insert({
           name: formData.name,
           contacts,
-          user_id: user.id, // 👈 Must match auth.uid() for RLS
+          user_id: userId,
         });
 
         if (error) throw error;
@@ -75,9 +78,9 @@ export default function ContactGroupForm({
       setFormData({ name: '', contacts: '' });
       setEditingGroup(null);
       onClose();
-      onRefresh();
-    } catch (error: any) {
-      setMessage(`❌ ${error.message}`);
+      await mutate('contact-groups'); // ✅ revalidate
+    } catch (err: any) {
+      setMessage(`❌ ${err.message}`);
     } finally {
       setLoading(false);
     }
@@ -132,7 +135,7 @@ export default function ContactGroupForm({
         <div className="flex gap-4">
           <button
             type="submit"
-            disabled={loading || userLoading}
+            disabled={loading}
             className="flex-1 rounded-xl bg-purple-600 py-3 text-white shadow-lg hover:scale-105 disabled:opacity-50"
           >
             {loading

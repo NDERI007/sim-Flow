@@ -1,22 +1,22 @@
 'use client';
 
-import { useContactGroupStore, type ContactGroup } from '@/app/lib/smsStore';
+import type { ContactGroup } from '@/app/lib/smsStore';
 
 interface ContactGroupCardProps {
   group: ContactGroup;
   onEdit: (group: ContactGroup) => void;
+  onDelete: (groupId: string) => void;
 }
 
 export default function ContactGroupCard({
   group,
   onEdit,
+  onDelete,
 }: ContactGroupCardProps) {
-  const { removeGroup } = useContactGroupStore();
-
-  const handleDelete = async () => {
+  const handleDelete = () => {
     const confirmDelete = confirm(`Delete group "${group.name}"?`);
     if (confirmDelete) {
-      removeGroup(group.id);
+      onDelete(group.id);
     }
   };
 
@@ -38,7 +38,7 @@ export default function ContactGroupCard({
           {group.contacts.map((num, i) => (
             <span
               key={i}
-              className="rounded-full bg-purple-100 px-3 py-1 text-sm text-purple-800 shadow-sm"
+              className="rounded-full bg-purple-100 px-3 py-1 text-sm whitespace-nowrap text-purple-800 shadow-sm"
             >
               {num}
             </span>
@@ -49,13 +49,13 @@ export default function ContactGroupCard({
       <div className="flex gap-2">
         <button
           onClick={() => onEdit(group)}
-          className="flex-1 rounded-lg bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-600"
+          className="flex-1 rounded-full bg-blue-500 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-blue-600"
         >
           Edit
         </button>
         <button
           onClick={handleDelete}
-          className="flex-1 rounded-lg bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-red-600"
+          className="flex-1 rounded-full bg-red-500 px-4 py-2 text-sm font-medium text-white transition-colors duration-200 hover:bg-red-600"
         >
           Delete
         </button>
