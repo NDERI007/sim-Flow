@@ -29,7 +29,7 @@ export default function Dashboard() {
           </p>
           <Link
             href="/send"
-            className="mt-4 inline-block w-full rounded-lg bg-purple-600 px-4 py-2 text-center text-white hover:bg-purple-700"
+            className="mt-4 inline-block w-full rounded-lg bg-red-500 px-4 py-2 text-center text-white hover:bg-red-700"
           >
             Go to Send Page
           </Link>

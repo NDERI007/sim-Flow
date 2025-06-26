@@ -33,30 +33,33 @@ export default function SummaryCards() {
       value: data?.quota ?? '...',
       icon: BarChart,
       color: 'text-green-600',
+      bgColor: 'bg-green-100',
     },
     {
       label: 'Sent Today',
       value: data?.sentToday ?? '...',
       icon: MessageCircle,
       color: 'text-blue-600',
+      bgColor: 'bg-blue-100',
     },
     {
       label: 'Scheduled Sends',
       value: data?.scheduledCount ?? '...',
       icon: TimerReset,
       color: 'text-purple-600',
+      bgColor: 'bg-purple-100',
     },
   ];
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-      {cards.map(({ label, value, icon: Icon, color }) => (
+      {cards.map(({ label, value, icon: Icon, color, bgColor }) => (
         <motion.div
           key={label}
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
-          className="rounded-xl border bg-white p-4 shadow-sm"
+          className={`rounded-xl p-4 shadow-sm ${bgColor}`}
         >
           <div className="flex items-center justify-between">
             <div className="text-sm font-medium text-gray-500">{label}</div>

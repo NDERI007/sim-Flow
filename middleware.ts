@@ -40,9 +40,8 @@ export async function middleware(req: NextRequest) {
 
   const { pathname } = req.nextUrl;
   const isAdminRoute = pathname.startsWith('/admin');
-  const isUserRoute = pathname.startsWith('/dashboard');
 
-  if (session && (isAdminRoute || isUserRoute)) {
+  if (session && isAdminRoute) {
     const { data } = await supabase
       .from('users')
       .select('role')
@@ -54,17 +53,13 @@ export async function middleware(req: NextRequest) {
     if (isAdminRoute && role !== 'admin') {
       return NextResponse.redirect(new URL('/unAuth', req.url));
     }
-
-    if (isUserRoute && role !== 'user') {
-      return NextResponse.redirect(new URL('/unAuth', req.url));
-    }
   }
 
   return res;
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/dashboard/:path*'],
+  matcher: ['/admin/:path*'],
 };
 // a session is the object that:
 

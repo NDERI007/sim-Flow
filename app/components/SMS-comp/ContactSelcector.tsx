@@ -44,17 +44,17 @@ const ContactGroupSelector = () => {
             className={`flex cursor-pointer items-center rounded-xl border-2 p-4 transition-all duration-200 hover:shadow-md ${
               isSelected
                 ? 'border-purple-500 bg-purple-50 shadow-md'
-                : 'border-gray-200 hover:border-gray-300'
+                : 'border-gray-500 hover:border-gray-600'
             }`}
           >
             <input
               type="checkbox"
               checked={isSelected}
               onChange={() => toggleGroup(group)}
-              className="h-4 w-4 rounded text-purple-600 focus:ring-purple-500"
+              className="h-4 w-4 rounded text-purple-600"
             />
             <div className="ml-3">
-              <div className="font-medium text-gray-900">{group.name}</div>
+              <div className="font-medium text-gray-600">{group.name}</div>
               <div className="text-sm text-gray-500">
                 {group.contacts.length} contact
                 {group.contacts.length !== 1 ? 's' : ''}
