@@ -6,6 +6,7 @@ import InputMethodSelector from '../components/SMS-comp/InputMethod';
 import ContactGroupSelector from '../components/SMS-comp/ContactSelcector';
 
 import axios from 'axios';
+import { CalendarClock } from 'lucide-react';
 
 export default function SendSmsPage() {
   const { selectedGroup, message, setMessage, resetForm } = useSmsStore();
@@ -93,8 +94,8 @@ export default function SendSmsPage() {
             rows={5}
             placeholder="Type your message here..."
           />
-          <label className="mb-2 block text-sm font-medium">
-            Schedule for (optional):
+          <label className="mb-2 block flex items-center gap-2 text-sm font-medium">
+            <CalendarClock size={20} /> Schedule for
           </label>
           <input
             type="datetime-local"
