@@ -15,6 +15,7 @@ export default function SendSmsPage() {
 
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [scheduledAt, setScheduledAt] = useState('');
 
   const parsedManualNumbers = manualNumbers
     .split(/[\n,]+/) // split on commas or new lines
@@ -40,6 +41,7 @@ export default function SendSmsPage() {
       const res = await axios.post('/api/send-sms', {
         to_numbers: allRecipients,
         message,
+        scheduledAt: scheduledAt || null,
       });
       console.log(res);
 
@@ -48,6 +50,7 @@ export default function SendSmsPage() {
       }
 
       setFeedback('✅ Message queued successfully!');
+      setScheduledAt('');
       resetForm(); // Reset store state
     } catch (err: any) {
       setFeedback(`❌ ${err.message}`);
@@ -90,6 +93,25 @@ export default function SendSmsPage() {
             rows={5}
             placeholder="Type your message here..."
           />
+          <label className="mb-2 block text-sm font-medium">
+            Schedule for (optional):
+          </label>
+          <input
+            type="datetime-local"
+            name="scheduled_at"
+            value={scheduledAt}
+            onChange={(e) => setScheduledAt(e.target.value)}
+            className="w-full rounded border p-2"
+          />
+          {scheduledAt && (
+            <button
+              type="button"
+              onClick={() => setScheduledAt('')}
+              className="mt-2 text-sm text-gray-600 underline"
+            >
+              ❌ Clear schedule
+            </button>
+          )}
         </div>
 
         {/* 4. Feedback Message */}

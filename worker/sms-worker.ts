@@ -1,13 +1,13 @@
-// sms.worker.ts
 import { Worker } from 'bullmq';
 import Redis from 'ioredis';
 import { createClient } from '@supabase/supabase-js';
+import { DateTime } from 'luxon';
 import dotenv from 'dotenv';
 dotenv.config();
 
 const connection = new Redis(process.env.REDIS_URL!, {
   tls: {},
-  maxRetriesPerRequest: null, // ✅ Disable Redis command retries
+  maxRetriesPerRequest: null,
 });
 
 const supabase = createClient(
@@ -17,16 +17,17 @@ const supabase = createClient(
 
 async function sendSmsViaOnfon(to: string, message: string) {
   console.log(`📨 Sending SMS to ${to}: "${message}"`);
-  await new Promise((res) => setTimeout(res, 1000)); // mock delay
+  await new Promise((res) => setTimeout(res, 1000)); // Simulated delay
   console.log(`✅ Sent to ${to}`);
 }
 
 const smsWorker = new Worker(
   'smsQueue',
   async (job) => {
-    const { user_id, to, message } = job.data;
+    const { user_id, to, message, message_id } = job.data;
     const segments = Math.ceil((message.length || 0) / 160) || 1;
 
+    // 1. Check user quota
     const { data, error: fetchError } = await supabase
       .from('users')
       .select('quota')
@@ -43,6 +44,7 @@ const smsWorker = new Worker(
       );
     }
 
+    // 2. Deduct quota
     const { error: quotaError } = await supabase.rpc('deduct_quota', {
       uid: user_id,
       amount: segments,
@@ -53,19 +55,55 @@ const smsWorker = new Worker(
       throw new Error(`Quota deduction failed: ${quotaError.message}`);
     }
 
+    // 3. Send SMS
     await sendSmsViaOnfon(to, message);
+
+    // 4. Update message as "sent" with EAT timestamp
+    const eatNow = DateTime.now().setZone('Africa/Nairobi').toISO();
+
+    const { error: updateError } = await supabase
+      .from('messages')
+      .update({
+        status: 'sent',
+        sent_at: eatNow,
+      })
+      .eq('id', message_id);
+
+    if (updateError) {
+      console.error(`⚠️ Failed to update message row:`, updateError.message);
+    }
+
     return { success: true, segments };
   },
   {
     connection,
-    concurrency: 5, // optional: handle 5 jobs in parallel
+    concurrency: 5,
   },
 );
 
-smsWorker.on('completed', (job) => {
+// ✅ Handle success
+smsWorker.on('completed', async (job) => {
   console.log(`🎉 Job ${job.id} completed for ${job.data.to}`);
 });
 
-smsWorker.on('failed', (job, err) => {
+// ❌ Handle failure and update DB with EAT timestamp
+smsWorker.on('failed', async (job, err) => {
   console.error(`❌ Job ${job?.id} failed: ${err.message}`);
+
+  if (job?.data?.message_id) {
+    const eatNow = DateTime.now().setZone('Africa/Nairobi').toISO();
+
+    const { error } = await supabase
+      .from('messages')
+      .update({
+        status: 'failed',
+        failed_at: eatNow,
+        error: err.message,
+      })
+      .eq('id', job.data.message_id);
+
+    if (error) {
+      console.error('⚠️ Failed to mark message as failed:', error.message);
+    }
+  }
 });
