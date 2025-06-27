@@ -1,16 +1,21 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { CalendarClock, Trash2 } from 'lucide-react';
 import { DateTime } from 'luxon';
 import axios from 'axios';
+import { useMetrics } from '@/app/lib/metrics';
 
 interface ScheduledMessage {
   id: string;
   to_number: string[];
   message: string;
   scheduled_at: string;
+}
+interface MetricsData {
+  sentToday: number;
+  scheduledCount: number;
+  scheduled: ScheduledMessage[];
 }
 
 const groupByDate = (messages: ScheduledMessage[]) => {
@@ -32,82 +37,85 @@ const groupByDate = (messages: ScheduledMessage[]) => {
 };
 
 export default function ScheduledSendsList() {
-  const [scheduled, setScheduled] = useState<ScheduledMessage[]>([]);
-
+  const { scheduled, mutate } = useMetrics();
   const handleDelete = async (id: string) => {
     const confirm = window.confirm(
       'Are you sure you want to delete this scheduled message?',
     );
     if (!confirm) return;
 
-    try {
-      await axios.delete('/api/schedule-del', { data: { id } });
-      setScheduled((prev) => prev.filter((msg) => msg.id !== id));
-    } catch (err) {
-      console.error('❌ Failed to delete:', err);
-      alert('Failed to delete scheduled message.');
-    }
+    mutate(
+      async (currentData: MetricsData | undefined): Promise<MetricsData> => {
+        if (!currentData) throw new Error('No data to update');
+        await axios.delete('/api/schedule-del', { data: { id } });
+        return {
+          ...currentData,
+          scheduled: currentData.scheduled.filter((msg) => msg.id !== id),
+        };
+      },
+      {
+        optimisticData: (currentData: MetricsData) => {
+          if (!currentData) return undefined;
+          return {
+            ...currentData,
+            scheduled: currentData.scheduled.filter((msg) => msg.id !== id),
+          };
+        },
+        rollbackOnError: true,
+        populateCache: true,
+        revalidate: false,
+      },
+    );
   };
-
-  useEffect(() => {
-    axios
-      .get('/api/metrics')
-      .then((res) => setScheduled(res.data.scheduled))
-      .catch((err) => console.error('❌ Failed to fetch scheduled:', err));
-  }, []);
 
   const grouped = groupByDate(scheduled.slice(0, 5));
 
   return (
-    <div className="rounded-xl bg-white p-4 shadow-sm">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold">
-        <CalendarClock className="h-5 w-5 text-purple-600" /> Scheduled Sends
+    <div className="rounded-xl bg-white p-4 shadow-sm md:p-6">
+      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold md:text-xl">
+        <CalendarClock className="h-5 w-5 text-purple-600" />
+        Scheduled Sends
       </h2>
 
       {Object.entries(grouped).map(([label, items]) => (
         <div key={label} className="mb-4">
           <p className="mb-2 text-sm font-medium text-gray-600">{label}</p>
-          <ul className="space-y-2">
+          <ul className="space-y-3">
             {items.map((item) => (
               <motion.li
                 key={item.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="rounded border border-gray-200 p-3 text-sm shadow-sm"
+                className="rounded border border-gray-200 p-3 text-sm shadow-sm md:p-4"
               >
-                <button
-                  onClick={() => handleDelete(item.id)}
-                  className="text-gray-400 transition hover:text-red-500"
-                  aria-label="Delete scheduled message"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-                <div className="flex flex-wrap font-medium text-gray-800">
-                  {Array.isArray(item.to_number) ? (
-                    item.to_number.map((num, idx) => (
+                <div className="flex items-start justify-between">
+                  <div className="flex flex-wrap gap-1 font-mono break-words text-gray-800">
+                    {item.to_number.map((num, idx) => (
                       <span
                         key={idx}
-                        className="mr-1 inline-block rounded border border-gray-300 px-3 py-1 text-sm font-medium shadow-sm"
+                        className="inline-block rounded border border-gray-300 bg-gray-50 px-2 py-0.5 text-xs md:text-sm"
                       >
                         ⌜{num}⌟
                       </span>
-                    ))
-                  ) : (
-                    <span className="inline-block rounded border border-gray-300 px-2 py-0.5 text-sm font-medium shadow-sm">
-                      ⌜{item.to_number}⌟
-                    </span>
-                  )}
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={() => handleDelete(item.id)}
+                    className="text-gray-400 transition hover:text-red-500"
+                    aria-label="Delete scheduled message"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
                 </div>
 
-                <span className="block truncate text-gray-600">
-                  {item.message}
-                </span>
-                <span className="block text-xs text-gray-400">
+                <p className="mt-2 truncate text-gray-600">{item.message}</p>
+                <p className="mt-1 text-xs text-gray-400">
                   {DateTime.fromISO(item.scheduled_at)
                     .setZone('Africa/Nairobi')
                     .toFormat('hh:mm a')}
-                </span>
+                </p>
               </motion.li>
             ))}
           </ul>

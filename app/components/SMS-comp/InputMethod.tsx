@@ -17,7 +17,7 @@ const InputMethodSelector = () => {
           type="button"
           className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors duration-150 ${
             inputMethod === value
-              ? 'border-green-900 bg-green-900 text-white'
+              ? 'border-pink-900 bg-pink-900 text-white'
               : 'border-gray-500 bg-white text-gray-800 hover:bg-gray-100'
           } `}
           onClick={() => setInputMethod(value)}

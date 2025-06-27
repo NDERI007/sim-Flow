@@ -1,15 +1,12 @@
-// components/Dashboard/SummaryCards.tsx
 'use client';
 
 import { BarChart, MessageCircle, TimerReset } from 'lucide-react';
-
 import { useQuota } from '@/app/lib/RealTime_Q';
 import { useMetrics } from '@/app/lib/metrics';
 
 export default function SummaryCards() {
   const { quota, isLoading: quotaLoading } = useQuota();
-
-  const { sentToday, scheduledCount, scheduled, isLoading } = useMetrics();
+  const { sentToday, scheduledCount } = useMetrics();
 
   const cards = [
     {
@@ -51,10 +48,18 @@ export default function SummaryCards() {
   ];
 
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+    <div
+      className="grid gap-6"
+      style={{
+        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+      }}
+    >
       {cards.map(
         ({ label, value, icon: Icon, color, bgColor, showUpgrade }) => (
-          <div key={label} className={`rounded-xl p-4 shadow-sm ${bgColor}`}>
+          <div
+            key={label}
+            className={`rounded-xl p-4 shadow-sm ${bgColor} flex flex-col justify-between`}
+          >
             <div className="flex items-center justify-between">
               <div className="text-sm font-medium text-gray-500">{label}</div>
               <Icon className={`h-5 w-5 ${color}`} />
@@ -63,11 +68,8 @@ export default function SummaryCards() {
 
             {showUpgrade && (
               <button
-                className="mt-3 inline-block rounded-md bg-yellow-500 px-3 py-1 text-sm font-semibold text-white hover:bg-yellow-600"
-                onClick={() => {
-                  // Optional: redirect to upgrade page
-                  window.location.href = '/pricing'; // customize as needed
-                }}
+                className="mt-4 inline-block rounded-md bg-yellow-500 px-3 py-1 text-sm font-semibold text-white hover:bg-yellow-600"
+                onClick={() => (window.location.href = '/pricing')}
               >
                 Upgrade
               </button>

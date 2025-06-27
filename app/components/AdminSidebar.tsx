@@ -1,38 +1,96 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { Menu, X } from 'lucide-react';
 import LogOutButton from './LogOut';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
+  const [isOpen, setIsOpen] = useState(false);
 
   const navItems = [
     { href: '/logistics', label: 'Logistics' },
     { href: '/contacts', label: 'Contact groups' },
   ];
 
+  // Lock body scroll on mobile sidebar open
+  useEffect(() => {
+    document.body.style.overflow = isOpen ? 'hidden' : '';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  // Close sidebar on ESC
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    document.addEventListener('keydown', handleEsc);
+    return () => document.removeEventListener('keydown', handleEsc);
+  }, []);
+
   return (
-    <aside className="flex w-64 flex-col justify-between bg-slate-950 p-6 text-gray-300">
-      <div>
-        <h2 className="mb-6 text-xl font-bold">Admin Panel</h2>
+    <>
+      {/* Hamburger Button */}
+      <button
+        className="fixed top-4 left-4 z-50 block rounded-lg bg-pink-900 p-2 text-white md:hidden"
+        onClick={() => setIsOpen(true)}
+        aria-label="Open sidebar"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
+      {/* Overlay */}
+      {isOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          onClick={() => setIsOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label="Sidebar Navigation"
+        className={`fixed top-0 left-0 z-50 h-screen w-64 transform bg-slate-950 p-6 text-gray-300 shadow-lg transition-transform duration-300 md:block md:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full'
+        }`}
+      >
+        {/* Close Button */}
+        <div className="mb-6 flex items-center justify-between md:hidden">
+          <h2 className="text-xl font-bold text-pink-200">Admin Panel</h2>
+          <button onClick={() => setIsOpen(false)} aria-label="Close sidebar">
+            <X className="h-6 w-6 text-white" />
+          </button>
+        </div>
+
+        {/* Only show heading on md+ */}
+        <h2 className="mb-6 hidden text-xl font-bold text-pink-200 md:block">
+          Admin Panel
+        </h2>
+
         <LogOutButton />
-        <nav className="space-y-3">
+        <nav className="mt-4 space-y-3">
           {navItems.map(({ label, href }) => (
             <Link
               key={href}
               href={href}
-              className={`block rounded-lg px-3 py-2 ${
+              className={`block rounded-lg px-3 py-2 transition ${
                 pathname === href
-                  ? 'bg-slate-800 font-semibold'
+                  ? 'bg-pink-900 font-semibold text-white'
                   : 'hover:bg-white/10'
               }`}
+              onClick={() => setIsOpen(false)} // Close on navigation
             >
               {label}
             </Link>
           ))}
         </nav>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }

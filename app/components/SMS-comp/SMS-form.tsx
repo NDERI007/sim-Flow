@@ -73,7 +73,7 @@ export default function SmsForm() {
           value={manualNumbers}
           onChange={(e) => setManualNumbers(e.target.value)}
           placeholder="Enter phone numbers separated by commas or new lines"
-          className="w-full rounded-lg bg-gray-900 px-4 py-3 text-sm text-white placeholder-gray-500 outline-none"
+          className="w-full rounded-lg bg-gray-900 px-4 py-3 text-sm text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-pink-900"
           rows={5}
         />
 
@@ -84,7 +84,7 @@ export default function SmsForm() {
           value={message}
           onChange={(e) => setMessage(e.target.value)}
           required
-          className="w-full rounded-lg bg-gray-900 p-3 text-white placeholder-gray-500 outline-none"
+          className="w-full rounded-lg bg-gray-900 p-3 text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-pink-900"
           rows={5}
           placeholder="Type your message here..."
         />
@@ -97,13 +97,13 @@ export default function SmsForm() {
           name="scheduled_at"
           value={scheduledAt}
           onChange={(e) => setScheduledAt(e.target.value)}
-          className="w-full rounded bg-[#1a1a1a] p-2 text-white outline-none"
+          className="w-full rounded-md bg-[#1a1a1a] p-2 text-white outline-none focus:ring-2 focus:ring-pink-900"
         />
         {scheduledAt && (
           <button
             type="button"
             onClick={() => setScheduledAt('')}
-            className="mt-2 text-sm text-white underline"
+            className="mt-2 text-sm text-pink-300 underline"
           >
             ❌ Clear schedule
           </button>
@@ -123,7 +123,7 @@ export default function SmsForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full cursor-pointer rounded-lg bg-green-800 py-3 font-semibold text-white disabled:opacity-50"
+        className="w-full cursor-pointer rounded-lg bg-pink-900 py-3 font-semibold text-white transition hover:bg-pink-800 disabled:opacity-50"
       >
         {loading ? 'Sending...' : 'Send SMS'}
       </button>
