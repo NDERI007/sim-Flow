@@ -6,6 +6,7 @@ interface AuthState {
   user: User | null;
   loading: boolean;
   error: string | null;
+
   getUser: () => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -31,6 +32,11 @@ export const useAuthStore = create<AuthState>((set) => {
       } else {
         set({ user: data.user, error: null, loading: false });
       }
+    },
+
+    fetchQuota: async () => {
+      const userId = useAuthStore.getState().user?.id;
+      if (!userId) return;
     },
 
     // Sign out user

@@ -9,7 +9,7 @@ const connection = new Redis(process.env.REDIS_URL!, {
   tls: {},
   maxRetriesPerRequest: null, // ✅ Prevent Redis-layer retries
 });
-
+connection.ping().then(console.log).catch(console.error); // Should print "PONG"
 const smsQueue = new Queue('smsQueue', { connection });
 // Kenyan phone number validator + normalizer
 function validateAndFormatKenyanNumber(input: string): string | null {
@@ -21,122 +21,170 @@ function validateAndFormatKenyanNumber(input: string): string | null {
 
   return null;
 }
+console.log('✅ Inside /api/send-sms POST handler');
 
 export async function POST(req: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        getAll: () => req.cookies.getAll(),
-        setAll: () => {},
-      },
-    },
-  );
-
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
-  }
-
-  const body = await req.json();
-  console.log('📦 Received body:', body);
-  const { to_numbers, message, scheduledAt } = body;
-
-  let delay = 0;
-  let scheduledTime: Date | null = null;
-
-  if (scheduledAt) {
-    scheduledTime = new Date(scheduledAt);
-    if (isNaN(scheduledTime.getTime()) || scheduledTime <= new Date()) {
-      return NextResponse.json(
-        { message: 'Invalid future date' },
-        { status: 400 },
-      );
-    }
-    delay = scheduledTime.getTime() - Date.now(); // ms delay for BullMQ
-  }
-
-  if (!Array.isArray(to_numbers) || to_numbers.length === 0 || !message) {
-    return NextResponse.json({ message: 'Invalid input.' }, { status: 400 });
-  }
-
-  // ✅ Validate and format numbers
-  const formattedNumbers: string[] = [];
-
-  for (const raw of to_numbers) {
-    const formatted = validateAndFormatKenyanNumber(raw);
-    if (!formatted) {
-      return NextResponse.json(
-        { message: `Invalid phone format: ${raw}` },
-        { status: 400 },
-      );
-    }
-    formattedNumbers.push(formatted);
-  }
-
-  const segmentsPerMessage = Math.ceil((message.length || 0) / 160) || 1;
-  const totalSegments = segmentsPerMessage * formattedNumbers.length;
-
-  // 1. Create message rows in Supabase
-  const { data: insertedMessages, error: insertError } = await supabase
-    .from('messages')
-    .insert(
-      formattedNumbers.map((to) => ({
-        to,
-        message,
-        user_id: user.id,
-        status: scheduledAt ? 'scheduled' : 'queued',
-      })),
-    )
-    .select(); // to get inserted IDs
-
-  if (insertError || !insertedMessages) {
-    return NextResponse.json(
-      { message: 'DB insert failed', error: insertError?.message },
-      { status: 500 },
-    );
-  }
-
-  // ✅ Enqueue messages (quota handled in worker)
-  // 2. Add jobs with DB record IDs, So the worker can update the correct message row in the database after the job finishes (sent or failed).
-  const jobs = insertedMessages.map((msg, i) => ({
-    name: 'send_sms',
-    data: {
-      message_id: msg.id,
-      user_id: user.id,
-      to: msg.to,
-      message: msg.message,
-      metadata: { source: 'dashboard', scheduled: Boolean(scheduledAt) },
-    },
-    opts: {
-      delay,
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 5000 },
-      removeOnComplete: true,
-      removeOnFail: false,
-    },
-  }));
+  console.log('✅ Inside /api/send-sms POST handler');
 
   try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        cookies: {
+          getAll: () => req.cookies.getAll(),
+          setAll: () => {},
+        },
+      },
+    );
+
+    console.log('🟡 Supabase client initialized');
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    console.log('🟡 Fetched user:', user);
+
+    if (authError || !user) {
+      console.log('🔴 Unauthorized access attempt');
+      return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
+    }
+
+    const body = await req.json();
+    console.log('📦 Body:', body);
+
+    const { to_number, message, scheduledAt } = body;
+
+    let delay = 0;
+    let scheduledTime: Date | null = null;
+
+    if (scheduledAt) {
+      scheduledTime = new Date(scheduledAt);
+      console.log('🕓 Scheduled for:', scheduledTime);
+
+      if (isNaN(scheduledTime.getTime()) || scheduledTime <= new Date()) {
+        console.log('🔴 Invalid schedule date');
+        return NextResponse.json(
+          { message: 'Invalid future date' },
+          { status: 400 },
+        );
+      }
+      delay = scheduledTime.getTime() - Date.now();
+    }
+
+    if (!Array.isArray(to_number)) {
+      console.log('🔴 to_numbers is not an array:', to_number);
+      return NextResponse.json({ message: 'Invalid input.' }, { status: 400 });
+    }
+
+    if (to_number.length === 0) {
+      console.log('🔴 to_numbers is empty');
+      return NextResponse.json(
+        { message: 'No recipients provided.' },
+        { status: 400 },
+      );
+    }
+
+    if (typeof message !== 'string') {
+      console.log('🔴 message is not a string:', typeof message);
+      return NextResponse.json(
+        { message: 'Invalid message format.' },
+        { status: 400 },
+      );
+    }
+
+    if (message.trim().length === 0) {
+      console.log('🔴 message is blank:', JSON.stringify(message));
+      return NextResponse.json(
+        { message: 'Message cannot be blank.' },
+        { status: 400 },
+      );
+    }
+
+    const formattedNumbers: string[] = [];
+    for (const raw of to_number) {
+      const formatted = validateAndFormatKenyanNumber(raw);
+      if (!formatted) {
+        console.log('🔴 Invalid phone format:', raw);
+        return NextResponse.json(
+          { message: `Invalid phone format: ${raw}` },
+          { status: 400 },
+        );
+      }
+      formattedNumbers.push(formatted);
+    }
+
+    const segmentsPerMessage = Math.ceil((message.length || 0) / 160) || 1;
+    const totalSegments = segmentsPerMessage * formattedNumbers.length;
+
+    console.log('📝 Inserting messages into Supabase...');
+    const { data: insertedMessages, error: insertError } = await supabase
+      .from('messages')
+      .insert(
+        formattedNumbers.map((to) => ({
+          to_number,
+          message,
+          user_id: user.id,
+          status: scheduledAt ? 'scheduled' : 'queued',
+          scheduled_at: scheduledAt
+            ? new Date(scheduledAt).toISOString()
+            : null,
+        })),
+      )
+      .select();
+
+    if (insertError || !insertedMessages) {
+      console.log('❌ DB insert failed:', insertError?.message);
+      return NextResponse.json(
+        { message: 'DB insert failed', error: insertError?.message },
+        { status: 500 },
+      );
+    }
+
+    console.log('📬 Inserting jobs to Redis queue...');
+    const jobs = insertedMessages.map((msg) => ({
+      name: 'send_sms',
+      data: {
+        message_id: msg.id,
+        user_id: user.id,
+        to: msg.to,
+        message: msg.message,
+        metadata: { source: 'dashboard', scheduled: Boolean(scheduledAt) },
+      },
+      opts: {
+        jobId: msg.id,
+        delay,
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 5000 },
+        removeOnComplete: true,
+        removeOnFail: false,
+      },
+    }));
+
     await smsQueue.addBulk(jobs);
-  } catch (err) {
-    console.error('❌ Queueing failed:', err);
+    console.log('✅ Successfully enqueued all jobs');
+
+    return NextResponse.json({
+      success: true,
+      recipients: formattedNumbers.length,
+      scheduled: Boolean(scheduledAt),
+      scheduledFor: scheduledAt ?? null,
+      totalSegments,
+    });
+  } catch (err: any) {
+    console.error('❌ Caught Error in POST /api/send-sms');
+    console.error('Message:', err?.message || err);
+    console.error('Stack:', err?.stack || 'No stack');
+
     return NextResponse.json(
-      { message: 'Queueing failed', error: String(err) },
+      {
+        message: 'Internal Server Error',
+        error: err?.message || String(err),
+        stack: err?.stack || null,
+      },
       { status: 500 },
     );
   }
-
-  return NextResponse.json({
-    success: true,
-    recipients: formattedNumbers.length,
-    scheduled: Boolean(scheduledAt),
-    scheduledFor: scheduledAt ?? null,
-    totalSegments,
-  });
 }

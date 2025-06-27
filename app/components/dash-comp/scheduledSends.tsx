@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { CalendarClock } from 'lucide-react';
+import { CalendarClock, Trash2 } from 'lucide-react';
 import { DateTime } from 'luxon';
 import axios from 'axios';
 
 interface ScheduledMessage {
   id: string;
-  to: string;
+  to_number: string[];
   message: string;
   scheduled_at: string;
 }
@@ -33,6 +33,21 @@ const groupByDate = (messages: ScheduledMessage[]) => {
 
 export default function ScheduledSendsList() {
   const [scheduled, setScheduled] = useState<ScheduledMessage[]>([]);
+
+  const handleDelete = async (id: string) => {
+    const confirm = window.confirm(
+      'Are you sure you want to delete this scheduled message?',
+    );
+    if (!confirm) return;
+
+    try {
+      await axios.delete('/api/schedule-del', { data: { id } });
+      setScheduled((prev) => prev.filter((msg) => msg.id !== id));
+    } catch (err) {
+      console.error('❌ Failed to delete:', err);
+      alert('Failed to delete scheduled message.');
+    }
+  };
 
   useEffect(() => {
     axios
@@ -61,9 +76,30 @@ export default function ScheduledSendsList() {
                 transition={{ duration: 0.3 }}
                 className="rounded border border-gray-200 p-3 text-sm shadow-sm"
               >
-                <span className="block font-medium text-gray-800">
-                  📱 {item.to}
-                </span>
+                <button
+                  onClick={() => handleDelete(item.id)}
+                  className="text-gray-400 transition hover:text-red-500"
+                  aria-label="Delete scheduled message"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+                <div className="flex flex-wrap font-medium text-gray-800">
+                  {Array.isArray(item.to_number) ? (
+                    item.to_number.map((num, idx) => (
+                      <span
+                        key={idx}
+                        className="mr-1 inline-block rounded border border-gray-300 px-3 py-1 text-sm font-medium shadow-sm"
+                      >
+                        ⌜{num}⌟
+                      </span>
+                    ))
+                  ) : (
+                    <span className="inline-block rounded border border-gray-300 px-2 py-0.5 text-sm font-medium shadow-sm">
+                      ⌜{item.to_number}⌟
+                    </span>
+                  )}
+                </div>
+
                 <span className="block truncate text-gray-600">
                   {item.message}
                 </span>

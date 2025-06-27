@@ -38,7 +38,7 @@ export default function SmsForm() {
 
     try {
       const res = await axios.post('/api/send-sms', {
-        to_numbers: allRecipients,
+        to_number: allRecipients,
         message,
         scheduledAt: scheduledAt || null,
       });
