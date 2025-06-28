@@ -6,9 +6,13 @@ import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import LogOutButton from './LogOut';
 
+import { useAuthStore } from '../lib/AuthStore';
+
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
+  const user = useAuthStore((state) => state.user);
+  const displayName = user?.user_metadata?.name || 'Twin';
 
   const navItems = [
     { href: '/logistics', label: 'Logistics' },
@@ -62,16 +66,21 @@ export default function AdminSidebar() {
       >
         {/* Close Button */}
         <div className="mb-6 flex items-center justify-between md:hidden">
-          <h2 className="text-xl font-bold text-pink-200">Admin Panel</h2>
+          <div className="text-semibold mb-4 rounded-lg p-3 text-gray-200 shadow">
+            👋 Welcome back,{' '}
+            <span className="font-semibold text-white">{displayName}</span>!
+          </div>
+
           <button onClick={() => setIsOpen(false)} aria-label="Close sidebar">
             <X className="h-6 w-6 text-white" />
           </button>
         </div>
 
         {/* Only show heading on md+ */}
-        <h2 className="mb-6 hidden text-xl font-bold text-pink-200 md:block">
-          Admin Panel
-        </h2>
+        <div className="mb-6 hidden text-xl font-bold text-gray-200 md:block">
+          👋 Welcome back,{' '}
+          <span className="font-semibold text-white">{displayName}</span>!
+        </div>
 
         <LogOutButton />
         <nav className="mt-4 space-y-3">

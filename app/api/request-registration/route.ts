@@ -31,12 +31,58 @@ export default async function handler(
     },
   );
 
-  const { email, name } = req.body;
+  const { email: rawEmail, name: rawName } = req.body;
+
+  const email = rawEmail?.trim().toLowerCase();
+  const name = rawName?.trim();
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!email || !name) {
     return res.status(400).json({ error: 'Missing email or name' });
   }
 
+  if (!emailRegex.test(email)) {
+    return res.status(400).json({ error: 'Invalid email format' });
+  }
+
+  // 🚨 Check if user already exists in main users table
+  const { data: existingUser, error: userCheckError } = await supabase
+    .from('users')
+    .select('id')
+    .eq('email', email)
+    .maybeSingle();
+
+  if (userCheckError) {
+    return res.status(500).json({ error: 'Failed to check existing user.' });
+  }
+
+  if (existingUser) {
+    return res
+      .status(400)
+      .json({ error: 'A user with this email is already registered.' });
+  }
+
+  // 🔁 Rate limit: count how many pending registrations exist in the last hour
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+
+  const { count: recentAttempts, error: rateLimitError } = await supabase
+    .from('pending_registrations')
+    .select('id', { count: 'exact', head: true })
+    .eq('email', email)
+    .gt('inserted_at', oneHourAgo); // requires an 'inserted_at' column
+
+  if (rateLimitError) {
+    return res.status(500).json({ error: 'Failed to enforce rate limit.' });
+  }
+
+  if ((recentAttempts ?? 0) >= 3) {
+    return res.status(429).json({
+      error: 'Too many registration attempts. Please try again later.',
+    });
+  }
+
+  // ✅ Proceed to generate OTP and save
   const token = crypto.randomUUID();
   const tokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
@@ -63,11 +109,11 @@ export default async function handler(
       to: email,
       subject: 'Complete Your Registration',
       html: `
-        <p>Hello ${name},</p>
-        <p>Click the link below to complete your registration:</p>
-        <p><a href="${registrationLink}">${registrationLink}</a></p>
-        <p>This link expires in 1 hour.</p>
-      `,
+      <p>Hello ${name},</p>
+      <p>Click the link below to complete your registration:</p>
+      <p><a href="${registrationLink}">${registrationLink}</a></p>
+      <p>This link expires in 1 hour.</p>
+    `,
     });
 
     return res.status(200).json({ success: true });

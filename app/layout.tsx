@@ -5,7 +5,11 @@ import { Inter } from 'next/font/google';
 import { useAuthStore } from './lib/AuthStore';
 import { useEffect } from 'react';
 
-const inter = Inter({ subsets: ['latin'] });
+export const inter = Inter({
+  subsets: ['latin'],
+  weight: ['400', '600', '700'], // ✅ Load multiple weights
+  display: 'swap',
+});
 
 export default function RootLayout({
   children,

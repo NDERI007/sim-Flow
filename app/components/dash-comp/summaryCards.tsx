@@ -1,8 +1,8 @@
 'use client';
 
 import { BarChart, MessageCircle, TimerReset } from 'lucide-react';
-import { useQuota } from '@/app/lib/RealTime_Q';
-import { useMetrics } from '@/app/lib/metrics';
+import { useQuota } from '../../lib/RealTime_Q';
+import { useMetrics } from '../../lib/metrics';
 
 export default function SummaryCards() {
   const { quota, isLoading: quotaLoading } = useQuota();
@@ -15,35 +15,35 @@ export default function SummaryCards() {
       icon: BarChart,
       color:
         quota == null || quotaLoading
-          ? 'text-gray-500'
+          ? 'text-gray-400 dark:text-gray-500'
           : quota <= 0
-            ? 'text-red-600'
+            ? 'text-red-600 dark:text-red-400'
             : quota <= 10
-              ? 'text-yellow-600'
-              : 'text-green-600',
+              ? 'text-yellow-600 dark:text-yellow-400'
+              : 'text-green-600 dark:text-green-400',
       bgColor:
         quota == null || quotaLoading
-          ? 'bg-gray-100'
+          ? 'bg-gray-100 dark:bg-gray-800'
           : quota <= 0
-            ? 'bg-red-100'
+            ? 'bg-red-100 dark:bg-red-900/40'
             : quota <= 10
-              ? 'bg-yellow-100'
-              : 'bg-green-100',
+              ? 'bg-yellow-100 dark:bg-yellow-900/40'
+              : 'bg-green-100 dark:bg-green-900/40',
       showUpgrade: quota != null && quota <= 10,
     },
     {
       label: 'Sent Today',
       value: sentToday ?? '...',
       icon: MessageCircle,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-100',
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-100 dark:bg-blue-900/40',
     },
     {
       label: 'Scheduled Sends',
       value: scheduledCount ?? '...',
       icon: TimerReset,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100',
+      color: 'text-purple-600 dark:text-purple-400',
+      bgColor: 'bg-purple-100 dark:bg-purple-900/40',
     },
   ];
 
@@ -61,14 +61,19 @@ export default function SummaryCards() {
             className={`rounded-xl p-4 shadow-sm ${bgColor} flex flex-col justify-between`}
           >
             <div className="flex items-center justify-between">
-              <div className="text-sm font-medium text-gray-500">{label}</div>
+              <div className="text-sm font-medium text-gray-500 dark:text-gray-400">
+                {label}
+              </div>
               <Icon className={`h-5 w-5 ${color}`} />
             </div>
-            <div className="mt-2 text-2xl font-bold text-gray-800">{value}</div>
+
+            <div className="mt-2 text-2xl font-bold text-gray-800 dark:text-gray-100">
+              {value}
+            </div>
 
             {showUpgrade && (
               <button
-                className="mt-4 inline-block rounded-md bg-yellow-500 px-3 py-1 text-sm font-semibold text-white hover:bg-yellow-600"
+                className="mt-4 inline-block rounded-md bg-yellow-500 px-3 py-1 text-sm font-semibold text-white hover:bg-yellow-600 dark:hover:bg-yellow-400"
                 onClick={() => (window.location.href = '/pricing')}
               >
                 Upgrade

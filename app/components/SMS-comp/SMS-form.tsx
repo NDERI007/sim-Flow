@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useSmsStore } from '@/app/lib/smsStore';
 import InputMethodSelector from './InputMethod';
 import ContactGroupSelector from './ContactSelcector';
 import axios from 'axios';
 import { CalendarClock } from 'lucide-react';
+import { useSmsStore } from '../../lib/smsStore';
 
 export default function SmsForm() {
   const { selectedGroup, message, setMessage, resetForm } = useSmsStore();
