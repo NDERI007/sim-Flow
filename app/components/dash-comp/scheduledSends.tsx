@@ -72,11 +72,6 @@ export default function ScheduledSendsList() {
 
   return (
     <div className="rounded-xl bg-white p-4 shadow-sm md:p-6">
-      <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold md:text-xl">
-        <CalendarClock className="h-5 w-5 text-purple-600" />
-        Scheduled Sends
-      </h2>
-
       {Object.entries(grouped).map(([label, items]) => (
         <div key={label} className="mb-4">
           <p className="mb-2 text-sm font-medium text-gray-600">{label}</p>

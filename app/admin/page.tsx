@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Send } from 'lucide-react';
+import { CalendarClock, Send } from 'lucide-react';
 import ScheduledSendsList from '../components/dash-comp/scheduledSends';
 import SummaryCards from '../components/dash-comp/summaryCards';
 
@@ -12,8 +12,9 @@ export default function Dashboard() {
 
         {/* Scheduled Sends */}
         <div className="mt-6 rounded-2xl bg-white p-4 shadow dark:bg-gray-900">
-          <h2 className="mb-4 text-lg font-semibold text-gray-800 dark:text-gray-100">
-            Upcoming Scheduled Sends
+          <h2 className="mb-4 flex items-center gap-2 text-lg font-semibold text-gray-800 dark:text-gray-100">
+            <CalendarClock className="h-5 w-5 text-pink-900" /> Upcoming
+            Scheduled Sends
           </h2>
           <ScheduledSendsList />
         </div>

@@ -4,6 +4,7 @@ import type { User } from '@supabase/supabase-js';
 
 interface AuthState {
   user: User | null;
+  accessToken: string | null;
   loading: boolean;
   error: string | null;
 
@@ -12,40 +13,47 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => {
-  // Auth state change listener
-  supabase.auth.onAuthStateChange((event, session) => {
-    const user = session?.user ?? null;
-    set({ user, loading: false, error: null });
+  supabase.auth.onAuthStateChange((_event, session) => {
+    set({
+      user: session?.user ?? null,
+      accessToken: session?.access_token ?? null,
+      loading: false,
+      error: null,
+    });
   });
 
   return {
     user: null,
+    accessToken: null,
     loading: true,
     error: null,
 
-    // Fetch user manually
     getUser: async () => {
       set({ loading: true, error: null });
-      const { data, error } = await supabase.auth.getUser();
-      if (error) {
-        set({ user: null, error: error.message, loading: false });
+      const { data, error } = await supabase.auth.getSession();
+      if (error || !data.session) {
+        set({
+          user: null,
+          accessToken: null,
+          error: error?.message ?? 'No session',
+          loading: false,
+        });
       } else {
-        set({ user: data.user, error: null, loading: false });
+        set({
+          user: data.session.user,
+          accessToken: data.session.access_token,
+          error: null,
+          loading: false,
+        });
       }
     },
 
-    fetchQuota: async () => {
-      const userId = useAuthStore.getState().user?.id;
-      if (!userId) return;
-    },
-
-    // Sign out user
     signOut: async () => {
       const { error } = await supabase.auth.signOut();
       if (error) {
         set({ error: error.message });
       } else {
-        set({ user: null, error: null });
+        set({ user: null, accessToken: null, error: null });
       }
     },
   };
