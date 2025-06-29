@@ -7,13 +7,6 @@ export type ContactGroup = {
   name: string;
   contacts: string[];
 };
-type SmsMessage = {
-  id: string;
-  phone: string;
-  message: string;
-  status: 'sent' | 'scheduled' | 'failed';
-  created_at: string;
-};
 
 export type InputMethod = 'manual' | 'groups';
 
@@ -22,9 +15,6 @@ interface SmsState {
   manualNumbers: string;
   selectedGroup: ContactGroup[];
   message: string;
-  messages: SmsMessage[];
-  isLoadingMessages: boolean;
-  fetchMessages: () => Promise<void>;
 
   isSubmitting: boolean;
   status: 'idle' | 'loading' | 'success' | 'error';
@@ -49,26 +39,6 @@ export const useSmsStore = create<SmsState>((set) => ({
   isSubmitting: false,
   status: 'idle',
   error: null,
-
-  messages: [],
-  isLoadingMessages: false,
-
-  fetchMessages: async () => {
-    set({ isLoadingMessages: true });
-
-    const { data, error } = await supabase
-      .from('messages')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Failed to fetch messages:', error.message);
-      set({ messages: [], isLoadingMessages: false });
-      return;
-    }
-
-    set({ messages: data || [], isLoadingMessages: false });
-  },
 
   setInputMethod: (method) => set({ inputMethod: method }),
   setManualNumbers: (numbers) => set({ manualNumbers: numbers }),

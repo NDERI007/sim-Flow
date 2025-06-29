@@ -15,7 +15,7 @@ export default function AdminSidebar() {
   const displayName = user?.user_metadata?.name || 'Twin';
 
   const navItems = [
-    { href: '/logistics', label: 'Logistics' },
+    { href: '/Reports', label: 'Delivery Reports' },
     { href: '/contacts', label: 'Contact groups' },
   ];
 

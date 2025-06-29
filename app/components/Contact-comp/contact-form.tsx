@@ -1,10 +1,18 @@
-'use client';
-
 import { useState, useEffect } from 'react';
-import { supabase } from '@/app/lib/supabase';
-import { type ContactGroup } from '@/app/lib/smsStore';
-import { useAuthStore } from '@/app/lib/AuthStore'; // ✅ use new store
 import { mutate } from 'swr';
+import { useAuthStore } from '../../lib/AuthStore';
+import { supabase } from '../../lib/supabase';
+
+interface Contact {
+  name: string;
+  phone: string;
+}
+
+interface ContactGroup {
+  id: string;
+  name: string;
+  contacts: Contact[];
+}
 
 interface Props {
   editingGroup: ContactGroup | null;
@@ -17,23 +25,48 @@ export default function ContactGroupForm({
   setEditingGroup,
   onClose,
 }: Props) {
-  const { user } = useAuthStore(); // ✅ pull user from store
+  const { user } = useAuthStore();
   const userId = user?.id;
 
-  const [formData, setFormData] = useState({ name: '', contacts: '' });
+  const [groupName, setGroupName] = useState('');
+  const [contacts, setContacts] = useState<Contact[]>([
+    { name: '', phone: '' },
+  ]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
 
   useEffect(() => {
     if (editingGroup) {
-      setFormData({
-        name: editingGroup.name,
-        contacts: editingGroup.contacts.join('\n'),
-      });
+      setGroupName(editingGroup.name);
+      setContacts(
+        editingGroup.contacts.map((c) => ({
+          name: c.name ?? '',
+          phone: c.phone ?? '',
+        })),
+      );
     } else {
-      setFormData({ name: '', contacts: '' });
+      setGroupName('');
+      setContacts([{ name: '', phone: '' }]);
     }
   }, [editingGroup]);
+
+  const handleContactChange = (
+    index: number,
+    field: keyof Contact,
+    value: string,
+  ) => {
+    setContacts((prev) =>
+      prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)),
+    );
+  };
+
+  const addContactRow = () => {
+    setContacts((prev) => [...prev, { name: '', phone: '' }]);
+  };
+
+  const removeContactRow = (index: number) => {
+    setContacts((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,39 +79,54 @@ export default function ContactGroupForm({
     setLoading(true);
     setMessage('');
 
-    const contacts = formData.contacts
-      .split(/[,\n]+/)
-      .map((num) => num.trim())
-      .filter(Boolean);
-
     try {
+      const cleanedContacts = contacts
+        .filter((c) => c.name.trim() && c.phone.trim())
+        .map((c) => ({
+          contact_name: c.name.trim(),
+          contact_phone: c.phone.trim(),
+          user_id: userId,
+        }));
+
+      let groupId = editingGroup?.id;
       if (editingGroup) {
         const { error } = await supabase
           .from('contact_groups')
-          .update({
-            name: formData.name,
-            contacts,
-          })
-          .eq('id', editingGroup.id)
-          .eq('user_id', userId); // ✅ extra safety check
-
+          .update({ name: groupName })
+          .eq('id', groupId)
+          .eq('user_id', userId);
         if (error) throw error;
-        setMessage('✅ Group updated!');
       } else {
-        const { error } = await supabase.from('contact_groups').insert({
-          name: formData.name,
-          contacts,
-          user_id: userId,
-        });
-
+        const { data, error } = await supabase
+          .from('contact_groups')
+          .insert({ name: groupName, user_id: userId })
+          .select()
+          .single();
         if (error) throw error;
-        setMessage('✅ Group created!');
+        groupId = data.id;
       }
 
-      setFormData({ name: '', contacts: '' });
+      const { data: insertedContacts, error: insertErr } = await supabase
+        .from('contacts')
+        .upsert(cleanedContacts, {
+          onConflict: 'user_id,contact_phone',
+        })
+        .select('id, contact_phone');
+
+      if (insertErr) throw insertErr;
+
+      const contactIds = insertedContacts?.map((c) => c.id) ?? [];
+      const linkData = contactIds.map((contact_id) => ({
+        contact_id,
+        group_id: groupId,
+      }));
+
+      setMessage('✅ Group saved!');
+      setGroupName('');
+      setContacts([{ name: '', phone: '' }]);
       setEditingGroup(null);
       onClose();
-      await mutate('contact-groups'); // ✅ revalidate
+      await mutate('contact-groups');
     } catch (err: any) {
       setMessage(`❌ ${err.message}`);
     } finally {
@@ -87,7 +135,7 @@ export default function ContactGroupForm({
   };
 
   return (
-    <div className="mb-8 rounded-2xl bg-gray-100 p-6 shadow-xl">
+    <div className="mb-8 rounded-2xl bg-slate-900 p-6 text-gray-200 shadow-2xl">
       <h2 className="mb-6 text-2xl font-semibold">
         {editingGroup ? 'Edit Group' : 'Create New Group'}
       </h2>
@@ -95,7 +143,7 @@ export default function ContactGroupForm({
       {message && (
         <p
           className={`mb-4 font-medium ${
-            message.includes('✅') ? 'text-green-600' : 'text-red-600'
+            message.includes('✅') ? 'text-green-500' : 'text-pink-400'
           }`}
         >
           {message}
@@ -104,39 +152,66 @@ export default function ContactGroupForm({
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div>
-          <label className="mb-2 block text-sm font-medium">Group Name</label>
+          <label className="mb-2 block text-sm font-medium text-gray-400">
+            Group Name
+          </label>
           <input
             type="text"
             required
-            value={formData.name}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, name: e.target.value }))
-            }
-            className="w-full rounded-xl bg-gray-200 px-4 py-3 outline-none"
+            value={groupName}
+            onChange={(e) => setGroupName(e.target.value)}
+            className="w-full rounded-xl bg-slate-800 px-4 py-3 text-gray-100 outline-none"
             placeholder="e.g. Marketing Team"
           />
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium">
-            Phone Contacts
+          <label className="mb-2 block text-sm font-medium text-gray-400">
+            Contacts
           </label>
-          <textarea
-            required
-            value={formData.contacts}
-            onChange={(e) =>
-              setFormData((prev) => ({ ...prev, contacts: e.target.value }))
-            }
-            className="h-32 w-full rounded-xl bg-gray-200 px-4 py-3 outline-none"
-            placeholder="Separate numbers with commas or new lines"
-          />
+          {contacts.map((contact, index) => (
+            <div key={index} className="mb-3 flex flex-wrap gap-2">
+              <input
+                type="text"
+                placeholder="Name"
+                value={contact.name}
+                onChange={(e) =>
+                  handleContactChange(index, 'name', e.target.value)
+                }
+                className="min-w-[150px] flex-1 rounded-xl bg-slate-800 px-4 py-2 text-gray-100 outline-none"
+              />
+              <input
+                type="text"
+                placeholder="Phone"
+                value={contact.phone}
+                onChange={(e) =>
+                  handleContactChange(index, 'phone', e.target.value)
+                }
+                className="min-w-[150px] flex-1 rounded-xl bg-slate-800 px-4 py-2 text-gray-100 outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => removeContactRow(index)}
+                className="rounded bg-pink-900 px-3 text-white"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={addContactRow}
+            className="mt-2 rounded-xl bg-pink-900 px-4 py-2 text-white hover:bg-pink-800"
+          >
+            + Add Contact
+          </button>
         </div>
 
         <div className="flex gap-4">
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 rounded-xl bg-purple-600 py-3 text-white shadow-lg hover:scale-105 disabled:opacity-50"
+            className="flex-1 rounded-xl bg-pink-900 py-3 text-white shadow-lg hover:scale-105 disabled:opacity-50"
           >
             {loading
               ? 'Saving...'
@@ -151,7 +226,7 @@ export default function ContactGroupForm({
               setEditingGroup(null);
               onClose();
             }}
-            className="flex-1 rounded-xl bg-gray-500 py-3 text-white shadow-lg hover:scale-105"
+            className="flex-1 rounded-xl bg-slate-700 py-3 text-white shadow-lg hover:scale-105"
           >
             Cancel
           </button>
