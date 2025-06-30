@@ -1,14 +1,8 @@
 import { useMemo } from 'react';
 import useSWR from 'swr';
 import { supabase } from './supabase';
+import type { ContactGroup } from './smsStore';
 
-export type GroupWithContacts = {
-  group_name: string;
-  contacts: {
-    name: string;
-    phone: string;
-  }[];
-};
 export async function deleteContactGroup(
   id: string,
 ): Promise<{ success: boolean; error?: string }> {
@@ -21,6 +15,7 @@ export async function deleteContactGroup(
 
   return { success: true };
 }
+
 export function useGroupedContacts() {
   const {
     data: flatData,
@@ -41,37 +36,32 @@ export function useGroupedContacts() {
     },
   );
 
-  const grouped: GroupWithContacts[] = useMemo(() => {
+  const grouped: ContactGroup[] = useMemo(() => {
     if (!flatData) return [];
 
-    const map = new Map<string, GroupWithContacts>();
+    const map = new Map<string, ContactGroup>();
 
     for (const row of flatData) {
-      if (!map.has(row.group_name)) {
-        map.set(row.group_name, {
+      if (!map.has(row.group_id)) {
+        map.set(row.group_id, {
+          id: row.group_id,
           group_name: row.group_name,
           contacts: [],
         });
       }
 
-      map.get(row.group_name)!.contacts.push({
-        name: row.contact_name,
-        phone: row.contact_phone,
+      map.get(row.group_id)!.contacts.push({
+        name: row.name,
+        phone: row.phone,
       });
     }
 
-    // Sort contacts inside each group
-    const sortedGroups = Array.from(map.values()).map((group) => ({
+    return Array.from(map.values()).map((group) => ({
       ...group,
       contacts: group.contacts.sort((a, b) =>
         a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }),
       ),
     }));
-
-    // Sort groups by name
-    return sortedGroups.sort((a, b) =>
-      a.group_name.localeCompare(b.group_name, 'en', { sensitivity: 'base' }),
-    );
   }, [flatData]);
 
   return { groups: grouped, error, isLoading };

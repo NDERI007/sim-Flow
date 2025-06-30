@@ -1,13 +1,13 @@
-import { useContactGroups } from '@/app/lib/contactGroup';
-import { useSmsStore } from '@/app/lib/smsStore';
+import { useGroupedContacts } from '../../lib/contactGroup';
+import { useSmsStore } from '../../lib/smsStore';
 
 const ContactGroupSelector = () => {
-  const { groups, error, isLoading } = useContactGroups();
+  const { groups, error, isLoading } = useGroupedContacts();
   const selectedGroups = useSmsStore((state) => state.selectedGroup);
   const toggleGroup = useSmsStore((state) => state.toggleGroup);
   const inputMethod = useSmsStore((state) => state.inputMethod);
 
-  const shouldShow = inputMethod === 'groups' || inputMethod === 'both';
+  const shouldShow = inputMethod === 'groups' || inputMethod === 'manual';
   if (!shouldShow) return null;
   if (isLoading) {
     return <p className="text-sm text-gray-400">Loading contact groups...</p>;
@@ -43,8 +43,8 @@ const ContactGroupSelector = () => {
             key={group.id}
             className={`flex cursor-pointer items-center rounded-xl border-2 p-4 transition-all duration-200 hover:shadow-md ${
               isSelected
-                ? 'border-purple-500 bg-purple-50 shadow-md'
-                : 'border-gray-500 hover:border-gray-600'
+                ? 'bg-slatte-800 border-pink-900 shadow-md'
+                : 'border-slate-700 hover:border-pink-900'
             }`}
           >
             <input
@@ -54,8 +54,10 @@ const ContactGroupSelector = () => {
               className="h-4 w-4 rounded text-purple-600"
             />
             <div className="ml-3">
-              <div className="font-medium text-gray-600">{group.name}</div>
-              <div className="text-sm text-gray-500">
+              <div className="font-medium text-gray-300">
+                {group.group_name}
+              </div>
+              <div className="text-sm text-gray-400">
                 {group.contacts.length} contact
                 {group.contacts.length !== 1 ? 's' : ''}
               </div>

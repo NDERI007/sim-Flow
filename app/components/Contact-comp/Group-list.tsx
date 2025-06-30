@@ -1,27 +1,20 @@
 'use client';
 
 import { useState } from 'react';
-
 import { refreshContactGroups } from '../../lib/useContactGroups';
 import { deleteContactGroup } from '../../lib/contactGroup';
 import ContactGroupCard from './contact-card';
+import { ContactGroup } from '../../lib/smsStore';
 
-interface Contact {
-  name: string;
-  phone: string;
-}
-
-interface GroupWithContacts {
-  id: string;
-  name: string;
-  contacts: Contact[];
+interface ContactGroupListProps {
+  groups: ContactGroup[];
+  onEdit?: (group: ContactGroup) => void;
 }
 
 export default function ContactGroupList({
   groups,
-}: {
-  groups: GroupWithContacts[];
-}) {
+  onEdit,
+}: ContactGroupListProps) {
   const [deletingIds, setDeletingIds] = useState<Set<string>>(new Set());
 
   const handleDelete = async (id: string) => {
@@ -46,10 +39,11 @@ export default function ContactGroupList({
         <ContactGroupCard
           key={group.id}
           id={group.id}
-          name={group.name}
+          group_name={group.group_name}
           contacts={group.contacts}
           onDelete={() => handleDelete(group.id)}
           isDeleting={deletingIds.has(group.id)}
+          onEdit={onEdit ? () => onEdit(group) : undefined}
         />
       ))}
     </div>

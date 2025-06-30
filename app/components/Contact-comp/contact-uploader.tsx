@@ -8,16 +8,21 @@ import { supabase } from '../../lib/supabase';
 import { refreshContactGroups } from '../../lib/useContactGroups';
 
 interface Contact {
-  contact_name: string;
-  contact_phone: string;
+  name: string;
+  phone: string;
+}
+interface ContactUploaderProps {
+  onComplete?: () => void;
 }
 
-export default function ContactUploader() {
+export default function ContactUploader({ onComplete }: ContactUploaderProps) {
   const { user } = useAuthStore();
   const userId = user?.id;
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [duplicates, setDuplicates] = useState<Contact[]>([]);
   const [groupName, setGroupName] = useState('');
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const BATCH_SIZE = 100;
 
@@ -26,35 +31,39 @@ export default function ContactUploader() {
     if (!file) return;
 
     const ext = file.name.split('.').pop()?.toLowerCase();
+    let parsedContacts: Contact[] = [];
 
     try {
-      let parsedContacts: Contact[] = [];
-
       if (ext === 'csv') {
         const text = await file.text();
-        const parsed = Papa.parse(text, { header: true });
+        const parsed = Papa.parse(text, {
+          header: true,
+          transformHeader: (h) => h.trim().toLowerCase(),
+        });
         parsedContacts = (parsed.data as any[]).map((row) => ({
-          contact_name: String(row.name || '').trim(),
-          contact_phone: normalizePhone(String(row.phone || '').trim()),
+          name: String(row.name || '').trim(),
+          phone: normalizePhone(String(row.phone || '').trim()),
         }));
       } else if (ext === 'xlsx' || ext === 'xls') {
         parsedContacts = await parseExcel(file);
       } else {
-        setError('Unsupported file format. Please upload .csv or .xlsx files.');
-        return;
+        return setError(
+          'Unsupported file format. Please upload .csv or .xlsx files.',
+        );
       }
 
-      parsedContacts = parsedContacts.filter((c) =>
-        /^07\d{8}$/.test(c.contact_phone),
-      );
+      parsedContacts = parsedContacts.filter((c) => /^07\d{8}$/.test(c.phone));
 
-      if (parsedContacts.length === 0) {
-        setError('No valid contacts found.');
-        return;
+      const { deduped, duplicates } = dedupeContacts(parsedContacts);
+
+      if (deduped.length === 0) {
+        return setError('No valid, unique contacts found.');
       }
 
-      setContacts(parsedContacts);
+      setContacts(deduped);
+      setDuplicates(duplicates);
       setError('');
+      setSuccess('');
     } catch (err) {
       console.error(err);
       setError('Failed to parse file. Please check format and try again.');
@@ -67,6 +76,7 @@ export default function ContactUploader() {
     if (contacts.length === 0) return setError('Please upload a contact file.');
 
     setError('');
+    setSuccess('');
     setLoading(true);
 
     try {
@@ -87,7 +97,8 @@ export default function ContactUploader() {
           .from('contacts')
           .upsert(
             chunk.map((c) => ({
-              ...c,
+              contact_name: c.name,
+              contact_phone: c.phone,
               user_id: userId,
             })),
             { onConflict: 'contact_phone,user_id' },
@@ -108,9 +119,14 @@ export default function ContactUploader() {
         if (linkError) throw linkError;
       }
 
+      setSuccess(
+        `Successfully imported ${contacts.length} contacts to "${group.name}"`,
+      );
       setContacts([]);
+      setDuplicates([]);
       setGroupName('');
       await refreshContactGroups();
+      onComplete?.();
     } catch (err: any) {
       setError(err.message || 'Something went wrong');
     } finally {
@@ -118,27 +134,33 @@ export default function ContactUploader() {
     }
   };
 
+  const handleReset = () => {
+    setContacts([]);
+    setDuplicates([]);
+    setGroupName('');
+    setError('');
+    setSuccess('');
+  };
+
   return (
-    <div className="rounded-lg border border-gray-200 p-4 shadow-md">
-      <label className="mb-2 block text-sm font-medium text-gray-700">
+    <div className="rounded-lg bg-slate-900 p-4 text-sm text-gray-200 shadow-md">
+      <label className="mb-2 block font-medium text-gray-400">
         Upload CSV or Excel File
       </label>
       <input
         type="file"
         accept=".csv, .xlsx, .xls"
         onChange={handleFile}
-        className="mb-4 block w-full text-sm text-gray-700 file:mr-4 file:rounded-md file:border-0 file:bg-purple-100 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-purple-800 hover:file:bg-purple-200"
+        className="mb-4 w-full rounded px-4 py-2 text-gray-200 file:mr-4 file:rounded-md file:border-0 file:bg-pink-900 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-pink-800"
       />
 
-      <label className="mb-1 block text-sm font-medium text-gray-700">
-        Group Name
-      </label>
+      <label className="mb-1 block font-medium text-gray-400">Group Name</label>
       <input
         type="text"
         value={groupName}
         onChange={(e) => setGroupName(e.target.value)}
-        placeholder="e.g. Nairobi Leads, Students, VIP List..."
-        className="mb-4 w-full rounded border px-3 py-2 text-sm text-gray-700"
+        placeholder="e.g.Hi cousins"
+        className="mb-4 w-full rounded bg-slate-800 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none"
       />
 
       {contacts.length > 0 && (
@@ -147,25 +169,50 @@ export default function ContactUploader() {
           <div className="max-h-40 overflow-y-auto rounded border bg-gray-50 p-2 text-sm text-gray-700 shadow-sm">
             {contacts.map((c, i) => (
               <div key={i} className="mb-1">
-                {c.contact_name} — {c.contact_phone}
+                {c.name} — {c.phone}
               </div>
             ))}
           </div>
+          <p className="mt-2 text-xs text-gray-500">
+            ✅ {contacts.length} unique contacts
+            {duplicates.length > 0 && (
+              <> — ⚠️ {duplicates.length} duplicates skipped</>
+            )}
+          </p>
         </div>
       )}
 
-      {error && <p className="text-sm text-red-500">{error}</p>}
+      {error && (
+        <div className="mb-2 rounded bg-red-100 px-3 py-2 text-sm text-red-700">
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="mb-2 rounded bg-green-100 px-3 py-2 text-sm text-green-700">
+          {success}
+        </div>
+      )}
 
-      <button
-        onClick={handleImport}
-        className="mt-4 w-full rounded bg-purple-700 px-4 py-2 text-sm font-medium text-white hover:bg-purple-800 disabled:bg-gray-300"
-        disabled={!contacts.length || !groupName.trim() || loading}
-      >
-        {loading ? 'Importing...' : 'Import Contacts'}
-      </button>
+      <div className="flex gap-2">
+        <button
+          onClick={handleImport}
+          className="mt-2 flex-1 rounded bg-purple-700 px-4 py-2 text-sm font-medium text-white hover:bg-purple-800 disabled:bg-neutral-700"
+          disabled={!contacts.length || !groupName.trim() || loading}
+        >
+          {loading ? 'Importing...' : 'Import Contacts'}
+        </button>
+        <button
+          onClick={handleReset}
+          className="mt-2 flex-1 rounded bg-violet-800 px-4 py-2 text-sm text-white hover:bg-violet-900"
+        >
+          Reset
+        </button>
+      </div>
     </div>
   );
 }
+
+// 📦 UTILITIES
 
 function normalizePhone(phone: string) {
   phone = phone.replace(/\s|-/g, '');
@@ -174,20 +221,45 @@ function normalizePhone(phone: string) {
   return phone;
 }
 
+function dedupeContacts(contacts: Contact[]) {
+  const seen = new Set<string>();
+  const deduped: Contact[] = [];
+  const duplicates: Contact[] = [];
+
+  for (const contact of contacts) {
+    if (seen.has(contact.phone)) {
+      duplicates.push(contact);
+    } else {
+      seen.add(contact.phone);
+      deduped.push(contact);
+    }
+  }
+
+  return { deduped, duplicates };
+}
+
 async function parseExcel(file: File): Promise<Contact[]> {
   const workbook = new ExcelJS.Workbook();
   const buffer = await file.arrayBuffer();
   await workbook.xlsx.load(buffer);
 
+  if (workbook.worksheets.length !== 1) {
+    throw new Error('Please upload an Excel file with a single sheet.');
+  }
+
   const sheet = workbook.worksheets[0];
   const contacts: Contact[] = [];
 
+  if (sheet.actualRowCount < 2) {
+    throw new Error('The sheet appears to be empty or missing headers.');
+  }
+
   sheet.eachRow((row, index) => {
-    if (index === 1) return;
+    if (index === 1) return; // skip header
     const name = row.getCell(1).value?.toString().trim() || '';
     const phone = normalizePhone(row.getCell(2).value?.toString().trim() || '');
     if (name && /^07\d{8}$/.test(phone)) {
-      contacts.push({ contact_name: name, contact_phone: phone });
+      contacts.push({ name, phone });
     }
   });
 

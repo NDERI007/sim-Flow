@@ -3,37 +3,54 @@
 import { useState } from 'react';
 import ContactGroupForm from '../components/Contact-comp/contact-form';
 import ContactGroupList from '../components/Contact-comp/Group-list';
-import { useContactGroups } from '../lib/contactGroup'; // ✅ use the custom hook
-import { ContactGroup } from '../lib/smsStore';
+import { useGroupedContacts } from '../lib/contactGroup';
+
+import ContactUploader from '../components/Contact-comp/contact-uploader';
+import Modal from '../components/modal';
 
 export default function ContactGroupsPage() {
-  const { groups, error, isLoading } = useContactGroups(); // ✅ cleaner
+  const { groups, error, isLoading } = useGroupedContacts();
   const [showForm, setShowForm] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<ContactGroup | null>(null);
+  const [editingGroup, setEditingGroup] = useState<any>(null);
+  const [showUploader, setShowUploader] = useState(false);
 
-  const handleEdit = (group: ContactGroup) => {
+  const handleEditGroup = (group: any) => {
     setEditingGroup(group);
     setShowForm(true);
   };
 
-  const handleNewGroup = () => {
+  const handleCreateNew = () => {
     setEditingGroup(null);
     setShowForm(true);
   };
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Contact Groups</h1>
-        <button
-          onClick={handleNewGroup}
-          className="rounded-xl bg-purple-600 px-5 py-2 font-semibold text-white shadow-md transition hover:scale-105"
-        >
-          + New Group
-        </button>
-      </div>
+    <main className="mx-auto max-w-4xl px-4 py-10 text-gray-200">
+      <header className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-3xl font-bold text-white">Contact Groups</h1>
+        <div className="flex gap-3">
+          <button
+            onClick={handleCreateNew}
+            className="rounded-xl bg-pink-900 px-5 py-2 text-sm font-semibold text-white shadow-md transition hover:scale-105 hover:bg-pink-800"
+          >
+            + New Group
+          </button>
+          <button
+            onClick={() => setShowUploader(true)}
+            className="rounded-xl bg-pink-900 px-5 py-2 text-sm font-semibold text-white shadow-md transition hover:scale-105 hover:bg-pink-800"
+          >
+            📤 Upload Contacts
+          </button>
+        </div>
+      </header>
 
-      {/* Form */}
+      <Modal isOpen={showUploader} onClose={() => setShowUploader(false)}>
+        <h2 className="mb-4 text-xl font-bold text-gray-300">
+          Import Contacts
+        </h2>
+        <ContactUploader onComplete={() => setShowUploader(false)} />
+      </Modal>
+
       {showForm && (
         <ContactGroupForm
           editingGroup={editingGroup}
@@ -42,10 +59,27 @@ export default function ContactGroupsPage() {
         />
       )}
 
-      {/* Groups List */}
-      {isLoading && <p>Loading...</p>}
-      {error && <p className="text-red-500">{error.message}</p>}
-      {groups && <ContactGroupList groups={groups} onEdit={handleEdit} />}
-    </div>
+      {isLoading && (
+        <p className="mt-4 animate-pulse text-gray-400">
+          Loading contact groups...
+        </p>
+      )}
+
+      {error && (
+        <p className="mt-4 font-medium text-pink-400">
+          ❌ Error: {error.message}
+        </p>
+      )}
+
+      {!isLoading && !error && groups?.length > 0 && (
+        <ContactGroupList groups={groups} onEdit={handleEditGroup} />
+      )}
+
+      {!isLoading && !error && groups?.length === 0 && (
+        <p className="mt-4 text-sm text-gray-400">
+          You don’t have any groups yet.
+        </p>
+      )}
+    </main>
   );
 }

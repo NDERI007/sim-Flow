@@ -1,27 +1,27 @@
 'use client';
 
 import { useState } from 'react';
-import { Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
+import { ContactGroup } from '../../lib/smsStore';
 
-interface Contact {
-  name: string;
-  phone: string;
-}
+type Contact = ContactGroup['contacts'][number];
 
 interface ContactGroupCardProps {
-  id: string;
-  name: string;
-  contacts: Contact[];
+  id: ContactGroup['id'];
+  group_name: ContactGroup['group_name'];
+  contacts: ContactGroup['contacts'];
   onDelete: () => void;
   isDeleting?: boolean;
+  onEdit?: () => void;
 }
 
 export default function ContactGroupCard({
   id,
-  name,
+  group_name,
   contacts,
   onDelete,
   isDeleting = false,
+  onEdit,
 }: ContactGroupCardProps) {
   const [expanded, setExpanded] = useState(false);
   const [confirming, setConfirming] = useState(false);
@@ -33,34 +33,47 @@ export default function ContactGroupCard({
   return (
     <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
       <div className="mb-2 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-gray-800">{name}</h2>
-        {confirming ? (
-          <div className="flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-gray-800">{group_name}</h2>
+
+        <div className="flex items-center gap-2">
+          {onEdit && (
             <button
-              onClick={onDelete}
-              disabled={isDeleting}
-              className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+              onClick={onEdit}
+              className="text-sm text-blue-600 hover:text-blue-800"
+              title="Edit group"
             >
-              {isDeleting ? 'Deleting...' : 'Confirm'}
+              <Pencil className="h-5 w-5" />
             </button>
+          )}
+
+          {confirming ? (
+            <>
+              <button
+                onClick={onDelete}
+                disabled={isDeleting}
+                className="rounded bg-red-600 px-2 py-1 text-xs text-white hover:bg-red-700"
+              >
+                {isDeleting ? 'Deleting...' : 'Confirm'}
+              </button>
+              <button
+                onClick={() => setConfirming(false)}
+                disabled={isDeleting}
+                className="text-xs text-gray-500 hover:underline"
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
             <button
-              onClick={() => setConfirming(false)}
+              onClick={() => setConfirming(true)}
               disabled={isDeleting}
-              className="text-xs text-gray-500 hover:underline"
+              className="text-sm text-red-600 hover:text-red-800"
+              title="Delete group"
             >
-              Cancel
+              <Trash2 className="h-5 w-5" />
             </button>
-          </div>
-        ) : (
-          <button
-            onClick={() => setConfirming(true)}
-            disabled={isDeleting}
-            className="text-sm text-red-600 hover:text-red-800"
-            title="Delete group"
-          >
-            <Trash2 className="h-5 w-5" />
-          </button>
-        )}
+          )}
+        </div>
       </div>
 
       <div className="text-sm text-gray-700">

@@ -1,11 +1,15 @@
 // store/smsStore.ts
 import { create } from 'zustand';
-import { supabase } from './supabase';
+
+export type Contact = {
+  name: string;
+  phone: string;
+};
 
 export type ContactGroup = {
   id: string;
-  name: string;
-  contacts: string[];
+  group_name: string;
+  contacts: Contact[];
 };
 
 export type InputMethod = 'manual' | 'groups';

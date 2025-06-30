@@ -1,4 +1,4 @@
-import { useSmsStore, type InputMethod } from '@/app/lib/smsStore';
+import { InputMethod, useSmsStore } from '../../lib/smsStore';
 
 const INPUT_METHODS: { label: string; value: InputMethod }[] = [
   { label: 'Manual Entry', value: 'manual' },

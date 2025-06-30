@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect } from 'react';
 import { mutate } from 'swr';
 import { useAuthStore } from '../../lib/AuthStore';
@@ -10,8 +12,11 @@ interface Contact {
 
 interface ContactGroup {
   id: string;
-  name: string;
-  contacts: Contact[];
+  group_name: string;
+  contacts: {
+    name: string;
+    phone: string;
+  }[];
 }
 
 interface Props {
@@ -37,11 +42,11 @@ export default function ContactGroupForm({
 
   useEffect(() => {
     if (editingGroup) {
-      setGroupName(editingGroup.name);
+      setGroupName(editingGroup.group_name);
       setContacts(
         editingGroup.contacts.map((c) => ({
-          name: c.name ?? '',
-          phone: c.phone ?? '',
+          name: c.name,
+          phone: c.phone,
         })),
       );
     } else {
@@ -52,7 +57,7 @@ export default function ContactGroupForm({
 
   const handleContactChange = (
     index: number,
-    field: keyof Contact,
+    field: 'name' | 'phone',
     value: string,
   ) => {
     setContacts((prev) =>
@@ -70,7 +75,6 @@ export default function ContactGroupForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!userId) {
       setMessage('❌ You must be logged in.');
       return;
@@ -83,50 +87,98 @@ export default function ContactGroupForm({
       const cleanedContacts = contacts
         .filter((c) => c.name.trim() && c.phone.trim())
         .map((c) => ({
-          contact_name: c.name.trim(),
-          contact_phone: c.phone.trim(),
+          name: c.name.trim(),
+          phone: c.phone.trim(),
           user_id: userId,
         }));
 
+      if (!editingGroup) {
+        const { data: existing, error: existsError } = await supabase
+          .from('contact_groups')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('group_name', groupName)
+          .maybeSingle();
+
+        if (existsError) throw existsError;
+
+        if (existing) {
+          setMessage('❌ A group with this name already exists.');
+          setLoading(false);
+          return;
+        }
+      }
+
+      // 1. Insert/update group
       let groupId = editingGroup?.id;
+
       if (editingGroup) {
         const { error } = await supabase
           .from('contact_groups')
-          .update({ name: groupName })
+          .update({ group_name: groupName })
           .eq('id', groupId)
           .eq('user_id', userId);
         if (error) throw error;
       } else {
         const { data, error } = await supabase
           .from('contact_groups')
-          .insert({ name: groupName, user_id: userId })
+          .insert({ group_name: groupName, user_id: userId })
           .select()
           .single();
         if (error) throw error;
         groupId = data.id;
       }
 
+      // 2. Insert or update contacts
       const { data: insertedContacts, error: insertErr } = await supabase
         .from('contacts')
         .upsert(cleanedContacts, {
-          onConflict: 'user_id,contact_phone',
+          onConflict: 'user_id,phone',
         })
-        .select('id, contact_phone');
+        .select('id');
 
       if (insertErr) throw insertErr;
 
-      const contactIds = insertedContacts?.map((c) => c.id) ?? [];
+      // 3. Link to group
+      const contactIds = insertedContacts.map((c) => c.id);
       const linkData = contactIds.map((contact_id) => ({
         contact_id,
         group_id: groupId,
       }));
+
+      const { error: linkErr } = await supabase
+        .from('contact_group_members')
+        .upsert(linkData, {
+          onConflict: 'contact_id, group_id',
+        });
+
+      if (linkErr) throw linkErr;
 
       setMessage('✅ Group saved!');
       setGroupName('');
       setContacts([{ name: '', phone: '' }]);
       setEditingGroup(null);
       onClose();
-      await mutate('contact-groups');
+      // 2. Try to refresh materialized view
+      const tryRefreshView = async (retries = 3) => {
+        for (let i = 0; i < retries; i++) {
+          const { error } = await supabase.rpc('refresh_contacts_view');
+          if (!error) return true;
+          console.warn(`View refresh failed (try ${i + 1}):`, error.message);
+          await new Promise((res) => setTimeout(res, 500)); // wait before retry
+        }
+        return false;
+      };
+
+      const refreshSuccess = await tryRefreshView();
+
+      // 3. Wait a bit to let the DB refresh, then revalidate
+      setTimeout(
+        async () => {
+          await mutate('contacts-with-groups');
+        },
+        refreshSuccess ? 500 : 1000,
+      );
     } catch (err: any) {
       setMessage(`❌ ${err.message}`);
     } finally {
