@@ -12,15 +12,43 @@ const connection = new Redis(process.env.REDIS_URL!, {
 connection.ping().then(console.log).catch(console.error); // Should print "PONG"
 const smsQueue = new Queue('smsQueue', { connection });
 // Kenyan phone number validator + normalizer
-function validateAndFormatKenyanNumber(input: string): string | null {
-  const trimmed = input.trim().replace(/\s+/g, '');
+export function validateAndFormatKenyanNumber(
+  inputs: string[],
+  options?: { dev?: boolean },
+): string[] {
+  const valid: string[] = [];
+  const invalid: string[] = [];
 
-  if (/^\+2547\d{8}$/.test(trimmed)) return trimmed;
-  if (/^2547\d{8}$/.test(trimmed)) return `+${trimmed}`;
-  if (/^07\d{8}$/.test(trimmed)) return `+254${trimmed.slice(1)}`;
+  for (let raw of inputs) {
+    const cleaned = raw
+      .trim()
+      .replace(/[\s\-().]/g, '') // remove whitespace, dashes, brackets, etc.
+      .replace(/^(\+)?254/, '0'); // convert +254 / 254 to 07
 
-  return null;
+    const isValid = /^07\d{8}$/.test(cleaned);
+
+    if (options?.dev) {
+      if (isValid) {
+        console.log(`✅ Fixed: ${raw} → ${cleaned}`);
+      } else {
+        console.log(`🔴 Invalid: ${raw}`);
+      }
+    }
+
+    if (isValid) {
+      valid.push(cleaned);
+    } else {
+      invalid.push(raw);
+    }
+  }
+
+  if (invalid.length > 0) {
+    throw new Error(`Invalid phone number(s): ${invalid.join(', ')}`);
+  }
+
+  return valid;
 }
+
 console.log('✅ Inside /api/send-sms POST handler');
 
 export async function POST(req: NextRequest) {
@@ -103,17 +131,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const formattedNumbers: string[] = [];
-    for (const raw of to_number) {
-      const formatted = validateAndFormatKenyanNumber(raw);
-      if (!formatted) {
-        console.log('🔴 Invalid phone format:', raw);
-        return NextResponse.json(
-          { message: `Invalid phone format: ${raw}` },
-          { status: 400 },
-        );
-      }
-      formattedNumbers.push(formatted);
+    let formattedNumbers: string[];
+
+    try {
+      formattedNumbers = validateAndFormatKenyanNumber(to_number, {
+        dev: true,
+      });
+      formattedNumbers = [...new Set(formattedNumbers)]; // optional deduplication
+    } catch (err: any) {
+      return NextResponse.json({ message: err.message }, { status: 400 });
     }
 
     const segmentsPerMessage = Math.ceil((message.length || 0) / 160) || 1;

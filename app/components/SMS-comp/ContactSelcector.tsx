@@ -5,10 +5,7 @@ const ContactGroupSelector = () => {
   const { groups, error, isLoading } = useGroupedContacts();
   const selectedGroups = useSmsStore((state) => state.selectedGroup);
   const toggleGroup = useSmsStore((state) => state.toggleGroup);
-  const inputMethod = useSmsStore((state) => state.inputMethod);
 
-  const shouldShow = inputMethod === 'groups' || inputMethod === 'manual';
-  if (!shouldShow) return null;
   if (isLoading) {
     return <p className="text-sm text-gray-400">Loading contact groups...</p>;
   }
@@ -22,6 +19,7 @@ const ContactGroupSelector = () => {
   }
 
   if (!groups) return <p>Loading...</p>;
+
   if (groups.length === 0) {
     return (
       <div className="rounded-xl bg-gray-50 py-8 text-center">
@@ -43,7 +41,7 @@ const ContactGroupSelector = () => {
             key={group.id}
             className={`flex cursor-pointer items-center rounded-xl border-2 p-4 transition-all duration-200 hover:shadow-md ${
               isSelected
-                ? 'bg-slatte-800 border-pink-900 shadow-md'
+                ? 'border-pink-900 bg-slate-800 shadow-md'
                 : 'border-slate-700 hover:border-pink-900'
             }`}
           >

@@ -1,22 +1,18 @@
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
-import crypto from 'crypto';
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { DateTime } from 'luxon';
+import { NextRequest, NextResponse } from 'next/server';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
-
-  const accessToken = req.headers.authorization?.split('Bearer ')[1];
+export async function POST(req: NextRequest) {
+  const accessToken = req.headers.get('authorization')?.split('Bearer ')[1];
 
   if (!accessToken) {
-    return res.status(401).json({ error: 'Missing or invalid access token' });
+    return NextResponse.json(
+      { error: 'Missing or invalid access token' },
+      { status: 401 },
+    );
   }
 
   const supabase = createClient(
@@ -31,93 +27,95 @@ export default async function handler(
     },
   );
 
-  const { email: rawEmail, name: rawName } = req.body;
+  const { email: rawEmail, name: rawName } = await req.json();
 
   const email = rawEmail?.trim().toLowerCase();
   const name = rawName?.trim();
-
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
   if (!email || !name) {
-    return res.status(400).json({ error: 'Missing email or name' });
+    return NextResponse.json(
+      { error: 'Missing email or name' },
+      { status: 400 },
+    );
   }
 
   if (!emailRegex.test(email)) {
-    return res.status(400).json({ error: 'Invalid email format' });
+    return NextResponse.json(
+      { error: 'Invalid email format' },
+      { status: 400 },
+    );
   }
 
-  // 🚨 Check if user already exists in main users table
-  const { data: existingUser, error: userCheckError } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle();
+  // ✅ Rate limit check
+  const oneHourAgo = DateTime.now().toUTC().minus({ hours: 1 }).toISO();
 
-  if (userCheckError) {
-    return res.status(500).json({ error: 'Failed to check existing user.' });
-  }
-
-  if (existingUser) {
-    return res
-      .status(400)
-      .json({ error: 'A user with this email is already registered.' });
-  }
-
-  // 🔁 Rate limit: count how many pending registrations exist in the last hour
-  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
-
-  const { count: recentAttempts, error: rateLimitError } = await supabase
+  const { count: recentAttempts, error: rateError } = await supabase
     .from('pending_registrations')
     .select('id', { count: 'exact', head: true })
     .eq('email', email)
-    .gt('inserted_at', oneHourAgo); // requires an 'inserted_at' column
+    .gt('inserted_at', oneHourAgo);
 
-  if (rateLimitError) {
-    return res.status(500).json({ error: 'Failed to enforce rate limit.' });
+  if (rateError) {
+    return NextResponse.json(
+      { error: 'Failed to enforce rate limit.' },
+      { status: 500 },
+    );
   }
 
   if ((recentAttempts ?? 0) >= 3) {
-    return res.status(429).json({
-      error: 'Too many registration attempts. Please try again later.',
-    });
+    return NextResponse.json(
+      { error: 'Too many attempts. Please wait before trying again.' },
+      { status: 429 },
+    );
   }
 
-  // ✅ Proceed to generate OTP and save
-  const token = crypto.randomUUID();
-  const tokenExpiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  //  Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+  //  Set expiration in EAT, store as UTC
+  const eatExpiry = DateTime.now()
+    .setZone('Africa/Nairobi')
+    .plus({ minutes: 10 });
+  const otpExpiresAt = eatExpiry.toUTC().toISO();
 
   const { error: insertError } = await supabase
     .from('pending_registrations')
     .insert({
       email,
       name,
-      token,
-      token_expires_at: tokenExpiresAt.toISOString(),
+      otp,
+      otp_expires_at: otpExpiresAt,
     });
 
   if (insertError) {
-    return res
-      .status(500)
-      .json({ error: 'Failed to save registration request.' });
+    console.error('Supabase insert error:', insertError);
+    return NextResponse.json({ error: 'Failed to save OTP.' }, { status: 500 });
   }
 
-  const registrationLink = `${process.env.BASE_URL}/verify?token=${token}`;
-
+  // Send email with OTP
   try {
     await resend.emails.send({
-      from: 'noreply@yourdomain.com',
+      from: 'noreply@qualitechlabs.org',
       to: email,
-      subject: 'Complete Your Registration',
+      subject: 'Your One-Time Password (OTP)',
       html: `
-      <p>Hello ${name},</p>
-      <p>Click the link below to complete your registration:</p>
-      <p><a href="${registrationLink}">${registrationLink}</a></p>
-      <p>This link expires in 1 hour.</p>
-    `,
+        <p>Hello ${name},</p>
+        <p>Your OTP is:</p>
+        <h2>${otp}</h2>
+        <a href="https://temple-democrat-air-purchases.trycloudflare.com/verify?email=${encodeURIComponent(email)}" target="_blank">Complete Registration</a>
+
+        <p>It will expire at <strong>${eatExpiry.toFormat('hh:mm a')} EAT</strong>.</p>
+        <p>If you didn’t request this, you can ignore this email.</p>
+      `,
     });
 
-    return res.status(200).json({ success: true });
+    return NextResponse.json({ success: true });
   } catch (emailError) {
-    return res.status(500).json({ error: 'Failed to send email.' });
+    console.error('Resend error:', emailError);
+    return NextResponse.json(
+      { error: 'Failed to send OTP email.' },
+      { status: 500 },
+    );
   }
 }

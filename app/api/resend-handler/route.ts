@@ -1,41 +1,24 @@
+// /api/resend-handler.ts
+import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { Resend } from 'resend';
-import crypto from 'crypto';
-import type { NextApiRequest, NextApiResponse } from 'next';
+import { DateTime } from 'luxon';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export default async function handler(
-  req: NextApiRequest,
-  res: NextApiResponse,
-) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+// ⚠️ Use service role key here — only safe on server-side
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+);
 
-  const accessToken = req.headers.authorization?.split('Bearer ')[1];
-  if (!accessToken) {
-    return res.status(401).json({ error: 'Missing or invalid access token' });
-  }
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
-    },
-  );
-
-  const { email } = req.body;
+export async function POST(req: NextRequest) {
+  const { email } = await req.json();
   if (!email) {
-    return res.status(400).json({ error: 'Missing email' });
+    return NextResponse.json({ error: 'Missing email' }, { status: 400 });
   }
 
-  // Get existing registration to get user's name
+  // Fetch registration entry
   const { data: reg, error: fetchError } = await supabase
     .from('pending_registrations')
     .select('name')
@@ -43,45 +26,52 @@ export default async function handler(
     .single();
 
   if (fetchError || !reg) {
-    return res.status(404).json({ error: 'Pending registration not found.' });
+    return NextResponse.json(
+      { error: 'Pending registration not found.' },
+      { status: 404 },
+    );
   }
 
-  // Generate new token + expiry
-  const newToken = crypto.randomUUID();
-  const newExpiry = new Date(Date.now() + 1000 * 60 * 60); // 1 hour
+  // Generate 6-digit OTP
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  // Update the token
+  // Set OTP expiry (10 minutes)
+  const otpExpiresAt = DateTime.now()
+    .setZone('Africa/Nairobi')
+    .plus({ minutes: 10 })
+    .toISO();
+
   const { error: updateError } = await supabase
     .from('pending_registrations')
     .update({
-      token: newToken,
-      token_expires_at: newExpiry.toISOString(),
+      otp,
+      otp_expires_at: otpExpiresAt,
     })
     .eq('email', email);
 
   if (updateError) {
-    return res.status(500).json({ error: 'Failed to update token.' });
+    return NextResponse.json(
+      { error: 'Failed to update OTP.' },
+      { status: 500 },
+    );
   }
-
-  // Send updated email
-  const verificationLink = `${process.env.BASE_URL}/verify?token=${newToken}`;
 
   try {
     await resend.emails.send({
-      from: 'noreply@yourdomain.com', // ✅ Your verified domain in Resend
+      from: 'noreply@qualitechlabs.org',
       to: email,
-      subject: 'New Registration Link',
+      subject: 'Your Registration OTP',
       html: `
         <p>Hello ${reg.name},</p>
-        <p>Your previous registration link expired.</p>
-        <p>Click the new link below to complete your registration:</p>
-        <p><a href="${verificationLink}">${verificationLink}</a></p>
-        <p>This link will expire in 1 hour.</p>
+        <p>Your OTP to complete registration is:</p>
+        <h2>${otp}</h2>
+        <p>It will expire in 10 minutes.</p>
       `,
     });
 
-    return res.status(200).json({ success: true });
+    return NextResponse.json({ success: true });
   } catch (err) {
-    return res.status(500).json({ error: 'Failed to resend email.' });
+    console.error('Failed to send OTP email:', err);
+    return NextResponse.json({ error: 'Failed to send OTP.' }, { status: 500 });
   }
 }

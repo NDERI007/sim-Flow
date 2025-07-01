@@ -1,55 +1,46 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'next/navigation';
 import axios from 'axios';
-import { useAuthStore } from '../lib/AuthStore';
-import { supabase } from '../lib/supabase';
-import RegistrationForm from '../components/registrationForm';
+import { useRouter } from 'next/navigation';
 
 export default function VerifyPage() {
-  const { accessToken } = useAuthStore();
-  const searchParams = useSearchParams();
-  const token = searchParams.get('token');
+  const router = useRouter();
 
-  const [status, setStatus] = useState<
-    'checking' | 'expired' | 'valid' | 'error'
-  >('checking');
   const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
+  const [status, setStatus] = useState<'idle' | 'checking' | 'valid' | 'error'>(
+    'idle',
+  );
   const [resendSuccess, setResendSuccess] = useState(false);
-
-  useEffect(() => {
-    if (!token) {
-      setStatus('error');
-      return;
-    }
-
-    const checkToken = async () => {
-      try {
-        const { data, error } = await supabase
-          .from('pending_registrations')
-          .select('email')
-          .eq('token', token)
-          .lte('token_expires_at', new Date().toISOString()) // Ensure it hasn't expired
-          .single();
-
-        if (error || !data) {
-          setStatus('expired');
-        } else {
-          setEmail(data.email);
-          setStatus('valid');
-        }
-      } catch {
-        setStatus('error');
-      }
-    };
-
-    checkToken();
-  }, [token]);
-
   const [cooldown, setCooldown] = useState(0);
 
-  // Cooldown countdown
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setStatus('checking');
+
+    try {
+      const res = await axios.post('/api/verify-otp', { email, otp });
+      if (res.data?.ok) {
+        router.push(`/finish?email=${encodeURIComponent(email)}`);
+      } else {
+        setStatus('error');
+      }
+    } catch {
+      setStatus('error');
+    }
+  };
+
+  const handleResend = async () => {
+    try {
+      await axios.post('/api/resend-handler', { email });
+      setResendSuccess(true);
+      setCooldown(60);
+    } catch {
+      console.error('Resend failed');
+    }
+  };
+
   useEffect(() => {
     if (cooldown === 0) return;
     const interval = setInterval(() => {
@@ -58,54 +49,59 @@ export default function VerifyPage() {
     return () => clearInterval(interval);
   }, [cooldown]);
 
-  const handleResend = async () => {
-    try {
-      await axios.post(
-        '/api/resend-handler',
-        { email },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
-      setResendSuccess(true);
-    } catch (err) {
-      console.error(err);
-    }
-  };
+  return (
+    <div className="mx-auto mt-10 max-w-md space-y-6">
+      <h1 className="text-xl font-semibold">Verify your email</h1>
 
-  if (status === 'checking') return <p>Verifying token...</p>;
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label>Email</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full rounded bg-gray-100 px-3 py-2"
+            placeholder="Enter your email"
+            required
+          />
+        </div>
+        <div>
+          <label>OTP</label>
+          <input
+            value={otp}
+            onChange={(e) => setOtp(e.target.value)}
+            className="w-full rounded border px-3 py-2"
+            placeholder="Enter the OTP sent to your email"
+            required
+          />
+        </div>
+        <button
+          type="submit"
+          className="w-full rounded bg-blue-600 py-2 text-white hover:bg-blue-500"
+        >
+          Verify
+        </button>
+      </form>
 
-  if (status === 'valid') {
-    return <RegistrationForm />;
-  }
+      {status === 'error' && (
+        <p className="text-red-600">Invalid or expired OTP.</p>
+      )}
 
-  if (status === 'expired') {
-    return (
-      <div className="mt-10 space-y-4 text-center">
-        <p className="text-red-600">This verification link has expired.</p>
-
-        {resendSuccess ? (
-          <p className="text-green-600">
-            A new link has been sent to your email.
-          </p>
-        ) : (
-          <button
-            onClick={handleResend}
-            disabled={cooldown > 0}
-            className={`rounded px-4 py-2 text-white ${
-              cooldown > 0
-                ? 'cursor-not-allowed bg-gray-400'
-                : 'bg-blue-600 hover:bg-blue-500'
-            }`}
-          >
-            {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend Link'}
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  return <p className="text-red-600">Invalid or missing verification token.</p>;
+      {resendSuccess ? (
+        <p className="text-green-600">A new OTP has been sent to your email.</p>
+      ) : (
+        <button
+          onClick={handleResend}
+          disabled={cooldown > 0 || !email}
+          className={`mt-4 w-full rounded py-2 ${
+            cooldown > 0
+              ? 'cursor-not-allowed bg-gray-400'
+              : 'bg-blue-600 text-white hover:bg-blue-500'
+          }`}
+        >
+          {cooldown > 0 ? `Resend OTP in ${cooldown}s` : 'Resend OTP'}
+        </button>
+      )}
+    </div>
+  );
 }

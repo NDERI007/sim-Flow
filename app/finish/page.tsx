@@ -1,18 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import axios from 'axios';
-import { useAuthStore } from '../lib/AuthStore';
 
-export default function RegistrationForm() {
+export default function FinishRegistrationPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const email = searchParams.get('email') || '';
-  const token = searchParams.get('token') || '';
-
-  const { accessToken } = useAuthStore();
-
+  const [email, setEmail] = useState('');
+  const [otp, setOtp] = useState('');
   const [senderId, setSenderId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -24,17 +19,13 @@ export default function RegistrationForm() {
     setLoading(true);
 
     try {
-      const response = await axios.post(
-        '/api/verify-handler',
-        { token, senderId, password },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
+      const res = await axios.post('/api/complete-registration', {
+        email,
+        sender_id: senderId,
+        password,
+      });
 
-      if (response.status === 200) {
+      if (res.status === 200) {
         router.push('/admin');
       }
     } catch (err: any) {
@@ -58,9 +49,20 @@ export default function RegistrationForm() {
 
         <input
           type="email"
+          placeholder="Email"
           value={email}
-          readOnly
-          className="w-full rounded bg-zinc-700 px-3 py-2 text-white placeholder-gray-400 outline-none"
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className="w-full rounded bg-zinc-700 px-3 py-2 text-white"
+        />
+
+        <input
+          type="text"
+          placeholder="OTP code"
+          value={otp}
+          onChange={(e) => setOtp(e.target.value)}
+          required
+          className="w-full rounded bg-zinc-700 px-3 py-2 text-white"
         />
 
         <input
@@ -69,7 +71,7 @@ export default function RegistrationForm() {
           value={senderId}
           onChange={(e) => setSenderId(e.target.value)}
           required
-          className="w-full rounded bg-zinc-700 px-3 py-2 text-white placeholder-gray-400 outline-none"
+          className="w-full rounded bg-zinc-700 px-3 py-2 text-white"
         />
 
         <input
@@ -78,7 +80,7 @@ export default function RegistrationForm() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full rounded bg-zinc-700 px-3 py-2 text-white placeholder-gray-400 outline-none"
+          className="w-full rounded bg-zinc-700 px-3 py-2 text-white"
         />
 
         <button

@@ -1,35 +1,45 @@
 'use client';
 
 import { useState } from 'react';
-import InputMethodSelector from './InputMethod';
 import ContactGroupSelector from './ContactSelcector';
 import axios from 'axios';
 import { CalendarClock } from 'lucide-react';
 import { useSmsStore } from '../../lib/smsStore';
 
 export default function SmsForm() {
-  const { selectedGroup, message, setMessage, resetForm } = useSmsStore();
-  const manualNumbers = useSmsStore((s) => s.manualNumbers);
-  const setManualNumbers = useSmsStore((s) => s.setManualNumbers);
+  const {
+    manualNumbers,
+    setManualNumbers,
+    selectedGroup,
+    message,
+    setMessage,
+    resetForm,
+  } = useSmsStore();
 
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
 
-  const parsedManualNumbers = manualNumbers
-    .split(/[\n,]+/)
-    .map((num) => num.trim())
-    .filter((num) => num !== '');
+  const getAllPhoneNumbers = (): string[] => {
+    const manualList = manualNumbers
+      .split(/[\n,]+/)
+      .map((n) => n.trim())
+      .filter(Boolean);
 
-  const allRecipients = [
-    ...parsedManualNumbers,
-    ...selectedGroup.flatMap((g) => g.contacts),
-  ];
+    const groupList = selectedGroup.flatMap((group) =>
+      group.contacts.map((c) => c.phone.trim()),
+    );
+
+    return Array.from(new Set([...manualList, ...groupList]));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!message.trim() || allRecipients.length === 0) {
-      setFeedback('❌ Message and recipients are required.');
+
+    const recipients = getAllPhoneNumbers();
+
+    if (!message.trim() || recipients.length === 0) {
+      setFeedback('❌ Message and at least one phone number are required.');
       return;
     }
 
@@ -38,7 +48,7 @@ export default function SmsForm() {
 
     try {
       const res = await axios.post('/api/send-sms', {
-        to_number: allRecipients,
+        to_number: recipients,
         message,
         scheduledAt: scheduledAt || null,
       });
@@ -62,7 +72,6 @@ export default function SmsForm() {
       onSubmit={handleSubmit}
       className="space-y-6 rounded-xl bg-slate-950 p-6 text-gray-200 shadow-xl"
     >
-      <InputMethodSelector />
       <ContactGroupSelector />
 
       <div>
