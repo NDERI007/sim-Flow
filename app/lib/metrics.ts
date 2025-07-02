@@ -1,12 +1,12 @@
-// lib/hooks/useMetrics.ts
 import useSWR from 'swr';
 
-const fetcher = (url: string) => fetch(url).then((res) => res.json());
+const fetcher = (url: string) =>
+  fetch(url, { credentials: 'include' }).then((res) => res.json());
 
 export function useMetrics() {
   const { data, error, isLoading, mutate } = useSWR('/api/metrics', fetcher, {
     revalidateOnFocus: false,
-    refreshInterval: 0, // or set e.g. 30_000 for polling
+    refreshInterval: 0,
   });
 
   return {

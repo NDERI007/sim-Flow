@@ -32,13 +32,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  function generateAlphanumericOTP(length = 6) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I, O, 1, 0
+    let otp = '';
+    for (let i = 0; i < length; i++) {
+      otp += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return otp;
+  }
+
+  const otp = generateAlphanumericOTP(); // e.g., "Z7M4QX"
 
   // Set OTP expiry (10 minutes)
   const otpExpiresAt = DateTime.now()
     .setZone('Africa/Nairobi')
-    .plus({ minutes: 10 })
+    .plus({ minutes: 15 })
     .toISO();
 
   const { error: updateError } = await supabase

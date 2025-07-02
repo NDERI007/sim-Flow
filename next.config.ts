@@ -3,7 +3,7 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   allowedDevOrigins: [
-    'https://temple-democrat-air-purchases.trycloudflare.com', // Your Cloudflare tunnel domain
+    'https://advancement-extensions-incoming-accessing.trycloudflare.com', // Your Cloudflare tunnel domain
   ],
 };
 

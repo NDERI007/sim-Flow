@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { DateTime } from 'luxon';
+import { jwtVerify } from 'jose';
 
 export async function POST(req: NextRequest) {
   const supabase = createClient(
@@ -8,17 +8,31 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 
-  const { email, password, sender_id } = await req.json();
+  const { password, sender_id } = await req.json().catch(() => ({}));
+  const token = req.cookies.get('verify_token')?.value;
 
-  if (!email || !password || !sender_id) {
+  if (!token || !password || !sender_id) {
     return NextResponse.json(
-      { error: 'Missing required fields.' },
+      { error: 'Missing required fields or invalid session.' },
       { status: 400 },
     );
   }
 
-  const now = DateTime.now().setZone('Africa/Nairobi').toISO();
+  // Decode the JWT
+  let email: string;
+  try {
+    const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
+    const { payload } = await jwtVerify(token, secret);
+    email = payload.email as string;
+    if (!email) throw new Error('Email missing in token');
+  } catch {
+    return NextResponse.json(
+      { error: 'Invalid or expired token.' },
+      { status: 401 },
+    );
+  }
 
+  // Ensure there's a pending registration
   const { data: pending, error: fetchError } = await supabase
     .from('pending_registrations')
     .select('*')
@@ -27,17 +41,18 @@ export async function POST(req: NextRequest) {
 
   if (fetchError || !pending) {
     return NextResponse.json(
-      { error: 'OTP expired or invalid.' },
+      { error: 'Registration session expired. Please restart the process.' },
       { status: 400 },
     );
   }
 
+  // Register user
   const { data: auth, error: signUpError } = await supabase.auth.signUp({
     email,
     password,
   });
 
-  if (signUpError || !auth.user) {
+  if (signUpError || !auth.user || !auth.session) {
     return NextResponse.json(
       { error: signUpError?.message || 'Signup failed.' },
       { status: 500 },
@@ -46,6 +61,7 @@ export async function POST(req: NextRequest) {
 
   const userId = auth.user.id;
 
+  // Insert user profile
   const { error: insertError } = await supabase.from('users').insert({
     id: userId,
     email,
@@ -57,12 +73,37 @@ export async function POST(req: NextRequest) {
 
   if (insertError) {
     return NextResponse.json(
-      { error: 'Failed to insert user profile.' },
+      { error: 'Failed to create user profile.' },
       { status: 500 },
     );
   }
 
+  // Delete pending registration
   await supabase.from('pending_registrations').delete().eq('id', pending.id);
 
-  return NextResponse.json({ session: auth.session, user: auth.user });
+  const res = NextResponse.redirect(new URL('/admin', req.url), 307);
+
+  // ✅ Set sb-access-token and sb-refresh-token
+  res.cookies.set('sb-access-token', auth.session.access_token, {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax',
+    path: '/',
+  });
+
+  res.cookies.set('sb-refresh-token', auth.session.refresh_token, {
+    httpOnly: true,
+    secure: false,
+    sameSite: 'lax',
+    path: '/',
+  });
+
+  // ✅ Clean up verify token
+  res.cookies.set('verify_token', '', {
+    maxAge: 0,
+    path: '/',
+  });
+  res.cookies.delete('verify_token');
+
+  return res;
 }

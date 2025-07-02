@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 import { DateTime } from 'luxon';
+import { SignJWT } from 'jose';
 
 export async function POST(req: NextRequest) {
   const supabase = createClient(
@@ -8,22 +9,7 @@ export async function POST(req: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   );
 
-  let email: string | undefined;
-  let otp: string | undefined;
-
-  try {
-    const body = await req.json();
-    console.log('Raw request body:', body); // ✅ still good
-
-    // ✅ Only destructure after confirming `body` is an object
-    email = body.email;
-    otp = body.otp;
-  } catch (err) {
-    console.error('Failed to parse JSON', err);
-    return NextResponse.json({ error: 'Invalid JSON body.' }, { status: 400 });
-  }
-
-  console.log('Parsed email and otp:', { email, otp });
+  const { email, otp } = await req.json().catch(() => ({}));
 
   if (!email || !otp) {
     return NextResponse.json(
@@ -40,9 +26,7 @@ export async function POST(req: NextRequest) {
     .eq('email', email)
     .eq('otp', otp)
     .gt('otp_expires_at', now)
-    .limit(1)
     .maybeSingle();
-  console.log('Supabase OTP lookup result:', { pending, error });
 
   if (error || !pending) {
     return NextResponse.json(
@@ -51,5 +35,22 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ ok: true });
+  const secret = new TextEncoder().encode(process.env.JWT_SECRET!);
+  const token = await new SignJWT({ email })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('15m')
+    .sign(secret);
+
+  const res = NextResponse.json({ ok: true });
+
+  res.cookies.set('verify_token', token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 60 * 15,
+  });
+
+  return res;
 }

@@ -4,13 +4,20 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DateTime } from 'luxon';
 
 export async function GET(req: NextRequest) {
+  let res = NextResponse.next();
+  console.log('Cookies:', req.cookies.getAll());
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
         getAll: () => req.cookies.getAll(),
-        setAll: (cookies) => {},
+
+        setAll: (cookies) => {
+          cookies.forEach((cookie) => {
+            res.cookies.set(cookie.name, cookie.value, cookie.options);
+          });
+        },
       },
     },
   );
@@ -95,11 +102,15 @@ export async function GET(req: NextRequest) {
     }
 
     // ---------------- Response
-    return NextResponse.json({
-      sentToday: sentToday || 0,
-      scheduledCount: scheduledCount || 0,
-      scheduled: cleaned || [],
-    });
+    res = NextResponse.json(
+      {
+        sentToday: sentToday || 0,
+        scheduledCount: scheduledCount || 0,
+        scheduled: cleaned || [],
+      },
+      res,
+    );
+    return res;
   } catch (err) {
     console.error('🔴 Unhandled /api/metrics error:', err);
     return NextResponse.json(

@@ -2,31 +2,29 @@
 
 import { useState } from 'react';
 import axios from 'axios';
-import { useAuthStore } from '../lib/AuthStore';
 
 export default function EmailSubmissionForm() {
   const [email, setEmail] = useState('');
   const [name, setName] = useState('');
-  const [status, setStatus] = useState('');
-  const { accessToken } = useAuthStore();
+  const [status, setStatus] = useState<
+    'idle' | 'submitting' | 'success' | 'error'
+  >('idle');
+  const [message, setMessage] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setStatus('Submitting...');
+    setStatus('submitting');
+    setMessage('');
 
     try {
-      await axios.post(
-        '/api/request-registration',
-        { email, name },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
-      setStatus('Request submitted successfully!');
+      await axios.post('/api/request-registration', { email, name });
+      setStatus('success');
+      setMessage('Request submitted successfully!');
     } catch (err: any) {
-      setStatus(`Error: ${err.response?.data?.error || 'Unknown error'}`);
+      setStatus('error');
+      setMessage(
+        err.response?.data?.error || 'Something went wrong. Please try again.',
+      );
     }
   };
 
@@ -47,15 +45,15 @@ export default function EmailSubmissionForm() {
 
         <div className="space-y-2">
           <label
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
             htmlFor="name"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
           >
-            Full Name
+            Username
           </label>
           <input
             id="name"
             type="text"
-            placeholder="John Doe"
+            placeholder="Voke"
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -65,8 +63,8 @@ export default function EmailSubmissionForm() {
 
         <div className="space-y-2">
           <label
-            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
             htmlFor="email"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300"
           >
             Email Address
           </label>
@@ -83,14 +81,21 @@ export default function EmailSubmissionForm() {
 
         <button
           type="submit"
-          className="w-full rounded-md bg-pink-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-pink-800 focus:ring-2 focus:ring-pink-900 focus:ring-offset-2 focus:outline-none dark:focus:ring-offset-gray-900"
+          disabled={status === 'submitting'}
+          className="w-full rounded-md bg-pink-900 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-pink-800 focus:ring-2 focus:ring-pink-900 focus:ring-offset-2 focus:outline-none disabled:opacity-50 dark:focus:ring-offset-gray-900"
         >
-          Continue
+          {status === 'submitting' ? 'Submitting...' : 'Continue'}
         </button>
 
-        {status && (
-          <p className="text-center text-sm text-gray-500 dark:text-gray-400">
-            {status}
+        {message && (
+          <p
+            className={`text-center text-sm ${
+              status === 'success'
+                ? 'text-green-600 dark:text-green-400'
+                : 'text-red-500 dark:text-red-400'
+            }`}
+          >
+            {message}
           </p>
         )}
       </form>

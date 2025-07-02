@@ -6,25 +6,9 @@ import { NextRequest, NextResponse } from 'next/server';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
-  const accessToken = req.headers.get('authorization')?.split('Bearer ')[1];
-
-  if (!accessToken) {
-    return NextResponse.json(
-      { error: 'Missing or invalid access token' },
-      { status: 401 },
-    );
-  }
-
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
-    },
   );
 
   const { email: rawEmail, name: rawName } = await req.json();
@@ -70,13 +54,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  //  Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  function generateAlphanumericOTP(length = 6) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I, O, 1, 0
+    let otp = '';
+    for (let i = 0; i < length; i++) {
+      otp += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return otp;
+  }
+
+  const otp = generateAlphanumericOTP(); // e.g., "Z7M4QX"
 
   //  Set expiration in EAT, store as UTC
   const eatExpiry = DateTime.now()
     .setZone('Africa/Nairobi')
-    .plus({ minutes: 10 });
+    .plus({ minutes: 15 });
   const otpExpiresAt = eatExpiry.toUTC().toISO();
 
   const { error: insertError } = await supabase
@@ -103,8 +95,8 @@ export async function POST(req: NextRequest) {
         <p>Hello ${name},</p>
         <p>Your OTP is:</p>
         <h2>${otp}</h2>
-        <a href="https://temple-democrat-air-purchases.trycloudflare.com/verify?email=${encodeURIComponent(email)}" target="_blank">Complete Registration</a>
-
+        <a href="${process.env.BASE_URL}/verify?email=${encodeURIComponent(email)}" target="_blank">Complete Registration</a>
+  
         <p>It will expire at <strong>${eatExpiry.toFormat('hh:mm a')} EAT</strong>.</p>
         <p>If you didn’t request this, you can ignore this email.</p>
       `,
