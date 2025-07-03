@@ -1,12 +1,12 @@
 'use client';
 
-import { BarChart, MessageCircle, TimerReset } from 'lucide-react';
+import { AlertTriangle, BarChart, MessageCircle } from 'lucide-react';
 import { useQuota } from '../../lib/RealTime_Q';
 import { useMetrics } from '../../lib/metrics';
 
 export default function SummaryCards() {
   const { quota, isLoading: quotaLoading } = useQuota();
-  const { sentToday, scheduledCount } = useMetrics();
+  const { sentToday, failedCount } = useMetrics();
 
   const cards = [
     {
@@ -39,11 +39,11 @@ export default function SummaryCards() {
       bgColor: 'bg-blue-100 dark:bg-blue-900/40',
     },
     {
-      label: 'Scheduled Sends',
-      value: scheduledCount ?? '...',
-      icon: TimerReset,
-      color: 'text-purple-600 dark:text-purple-400',
-      bgColor: 'bg-purple-100 dark:bg-purple-900/40',
+      label: 'Failed Messages',
+      value: failedCount ?? '...',
+      icon: AlertTriangle,
+      color: 'text-red-600 dark:text-red-400',
+      bgColor: 'bg-red-100 dark:bg-red-900/40',
     },
   ];
 

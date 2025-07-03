@@ -35,7 +35,8 @@ export default function SmsForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    const contactGroupID =
+      selectedGroup.length === 1 ? selectedGroup[0].id : null;
     const recipients = getAllPhoneNumbers();
 
     if (!message.trim() || recipients.length === 0) {
@@ -51,6 +52,7 @@ export default function SmsForm() {
         to_number: recipients,
         message,
         scheduledAt: scheduledAt || null,
+        contact_group_id: contactGroupID,
       });
 
       if (res.status !== 200) {

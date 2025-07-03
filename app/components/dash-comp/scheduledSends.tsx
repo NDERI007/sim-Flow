@@ -8,10 +8,11 @@ import { useMetrics } from '../../lib/metrics';
 
 interface ScheduledMessage {
   id: string;
-  to_number: string[];
   message: string;
   scheduled_at: string;
+  group_name?: string | null;
 }
+
 interface MetricsData {
   sentToday: number;
   scheduledCount: number;
@@ -38,6 +39,7 @@ const groupByDate = (messages: ScheduledMessage[]) => {
 
 export default function ScheduledSendsList() {
   const { scheduled, mutate } = useMetrics();
+
   const handleDelete = async (id: string) => {
     const confirm = window.confirm(
       'Are you sure you want to delete this scheduled message?',
@@ -54,7 +56,7 @@ export default function ScheduledSendsList() {
         };
       },
       {
-        optimisticData: (currentData: MetricsData) => {
+        optimisticData: (currentData) => {
           if (!currentData) return undefined;
           return {
             ...currentData,
@@ -71,46 +73,53 @@ export default function ScheduledSendsList() {
   const grouped = groupByDate(scheduled.slice(0, 5));
 
   return (
-    <div className="rounded-xl bg-gray-800 p-4 shadow-sm md:p-6">
+    <div className="rounded-xl bg-slate-950 p-4 text-gray-300 md:p-6">
       {Object.entries(grouped).map(([label, items]) => (
-        <div key={label} className="mb-4">
-          <p className="mb-2 text-sm font-medium text-gray-400">{label}</p>
-          <ul className="space-y-3">
+        <div key={label} className="mb-6">
+          <p className="mb-3 text-sm font-semibold text-gray-400">{label}</p>
+
+          <ul className="space-y-4">
             {items.map((item) => (
               <motion.li
                 key={item.id}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
-                className="rounded border border-gray-700 bg-gray-900 p-3 text-sm shadow-sm md:p-4"
+                className="rounded-xl bg-[#0f0f0f] p-4 shadow-inner"
               >
                 <div className="flex items-start justify-between">
-                  <div className="flex flex-wrap gap-1 font-mono break-words text-gray-100">
-                    {item.to_number.map((num, idx) => (
-                      <span
-                        key={idx}
-                        className="inline-block rounded border border-gray-700 bg-gray-950 px-2 py-0.5 text-xs text-pink-200 md:text-sm"
-                      >
-                        ⌜{num}⌟
+                  <div className="flex w-full flex-col gap-2">
+                    <p className="line-clamp-2 text-sm text-gray-200">
+                      {item.message}
+                    </p>
+
+                    <div className="flex items-center justify-between text-xs text-gray-500">
+                      <span>
+                        ⏰{' '}
+                        {DateTime.fromISO(item.scheduled_at)
+                          .setZone('Africa/Nairobi')
+                          .toFormat('hh:mm a')}
                       </span>
-                    ))}
+
+                      <span
+                        className={`rounded px-2 py-0.5 text-sm ${
+                          item.group_name
+                            ? 'bg-pink-900/10 text-pink-400'
+                            : 'bg-gray-800 text-gray-400 italic'
+                        }`}
+                      >
+                        {item.group_name || 'Ungrouped'}
+                      </span>
+                    </div>
                   </div>
 
                   <button
                     onClick={() => handleDelete(item.id)}
-                    className="text-gray-500 transition hover:text-pink-500"
-                    aria-label="Delete scheduled message"
+                    className="mt-1 ml-4 text-gray-500 hover:text-pink-400"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
-
-                <p className="mt-2 truncate text-gray-300">{item.message}</p>
-                <p className="mt-1 text-xs text-gray-500">
-                  {DateTime.fromISO(item.scheduled_at)
-                    .setZone('Africa/Nairobi')
-                    .toFormat('hh:mm a')}
-                </p>
               </motion.li>
             ))}
           </ul>

@@ -11,7 +11,7 @@ export function useMetrics() {
 
   return {
     sentToday: data?.sentToday ?? 0,
-    scheduledCount: data?.scheduledCount ?? 0,
+    failedCount: data?.failedCount ?? 0,
     scheduled: data?.scheduled ?? [],
     isLoading,
     isError: !!error,

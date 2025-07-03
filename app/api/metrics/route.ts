@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
     // ---------------- Scheduled Messages (5 upcoming)
     const { data: scheduledMessages, error: scheduledError } = await supabase
       .from('messages')
-      .select('id, message, to_number, status')
+      .select('id, message, status, scheduled_at, contact_groups(group_name)')
       .eq('user_id', user.id)
       .eq('status', 'scheduled')
 
@@ -85,17 +85,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ---------------- Count All Scheduled
-    const { count: scheduledCount, error: scheduledCountError } = await supabase
+    // ---------------- Count All failed
+    const { count: failedCount, error: failedCountError } = await supabase
       .from('messages')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
-      .eq('status', 'scheduled');
+      .eq('status', 'failed');
 
-    if (scheduledCountError) {
-      console.error('🛑 Scheduled count fetch error:', scheduledCountError);
+    if (failedCountError) {
+      console.error('🛑 failed count fetch error:', failedCountError);
       return NextResponse.json(
-        { error: 'Failed to count scheduled messages' },
+        { error: 'Failed to count failed messages' },
         { status: 500 },
       );
     }
@@ -104,7 +104,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       quota: quotaData.quota,
       sentToday: sentToday || 0,
-      scheduledCount: scheduledCount || 0,
+      failedCount: failedCount || 0,
       scheduled: scheduledMessages || [],
     });
   } catch (err) {

@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     console.log('📦 Body:', body);
 
-    const { to_number, message, scheduledAt } = body;
+    const { to_number, message, scheduledAt, contact_group_id } = body;
 
     let delay = 0;
     let scheduledTime: Date | null = null;
@@ -157,9 +157,11 @@ export async function POST(req: NextRequest) {
           scheduled_at: scheduledAt
             ? new Date(scheduledAt).toISOString()
             : null,
+          contact_group_id,
         })),
       )
       .select();
+    console.log('📇 Group ID:', contact_group_id);
 
     if (insertError || !insertedMessages) {
       console.log('❌ DB insert failed:', insertError?.message);
