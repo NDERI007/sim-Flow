@@ -4,20 +4,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { DateTime } from 'luxon';
 
 export async function GET(req: NextRequest) {
-  let res = NextResponse.next();
-  console.log('Cookies:', req.cookies.getAll());
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
       cookies: {
         getAll: () => req.cookies.getAll(),
-
-        setAll: (cookies) => {
-          cookies.forEach((cookie) => {
-            res.cookies.set(cookie.name, cookie.value, cookie.options);
-          });
-        },
+        setAll: (cookies) => {},
       },
     },
   );
@@ -37,6 +30,21 @@ export async function GET(req: NextRequest) {
     if (!user) {
       console.error('🛑 No authenticated user');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // ---------------- Quota
+    const { data: quotaData, error: quotaError } = await supabase
+      .from('users')
+      .select('quota')
+      .eq('id', user.id)
+      .single();
+
+    if (quotaError) {
+      console.error('🛑 Quota fetch error:', quotaError);
+      return NextResponse.json(
+        { error: 'Failed to fetch quota' },
+        { status: 500 },
+      );
     }
 
     // ---------------- Time Logic
@@ -63,10 +71,10 @@ export async function GET(req: NextRequest) {
     // ---------------- Scheduled Messages (5 upcoming)
     const { data: scheduledMessages, error: scheduledError } = await supabase
       .from('messages')
-      .select('id, message, to_number, status, scheduled_at')
+      .select('id, message, to_number, status')
       .eq('user_id', user.id)
       .eq('status', 'scheduled')
-      .order('scheduled_at', { ascending: true })
+
       .limit(5);
 
     if (scheduledError) {
@@ -76,15 +84,6 @@ export async function GET(req: NextRequest) {
         { status: 500 },
       );
     }
-
-    // ✅ Clean and format the response
-    const cleaned = scheduledMessages.map((msg) => ({
-      id: msg.id,
-      to_number: Array.isArray(msg.to_number) ? msg.to_number : [msg.to_number],
-
-      message: typeof msg.message === 'string' ? msg.message : '',
-      scheduled_at: msg.scheduled_at,
-    }));
 
     // ---------------- Count All Scheduled
     const { count: scheduledCount, error: scheduledCountError } = await supabase
@@ -102,15 +101,12 @@ export async function GET(req: NextRequest) {
     }
 
     // ---------------- Response
-    res = NextResponse.json(
-      {
-        sentToday: sentToday || 0,
-        scheduledCount: scheduledCount || 0,
-        scheduled: cleaned || [],
-      },
-      res,
-    );
-    return res;
+    return NextResponse.json({
+      quota: quotaData.quota,
+      sentToday: sentToday || 0,
+      scheduledCount: scheduledCount || 0,
+      scheduled: scheduledMessages || [],
+    });
   } catch (err) {
     console.error('🔴 Unhandled /api/metrics error:', err);
     return NextResponse.json(

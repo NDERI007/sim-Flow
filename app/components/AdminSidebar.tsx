@@ -17,6 +17,7 @@ export default function AdminSidebar() {
   const navItems = [
     { href: '/Reports', label: 'Delivery Reports' },
     { href: '/contacts', label: 'Contact groups' },
+    { href: '/templates', label: 'Templates' },
   ];
 
   // Lock body scroll on mobile sidebar open

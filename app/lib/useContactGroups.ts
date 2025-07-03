@@ -6,7 +6,7 @@ import { mutate } from 'swr';
  * then triggers SWR to re-fetch the latest grouped contact data.
  */
 export async function refreshContactGroups() {
-  const { error } = await supabase.rpc('refresh_contacts_with_groups');
+  const { error } = await supabase.rpc('refresh_contacts_view');
   if (error) throw error;
 
   await mutate('contacts-with-groups');

@@ -58,7 +58,7 @@ export const useAuthStore = create<AuthState>((set, get) => {
       const { user } = get();
       if (!user) return;
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('users')
         .select('name')
         .eq('id', user.id)

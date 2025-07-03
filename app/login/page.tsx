@@ -10,25 +10,6 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
-  // 🔁 Auto-redirect if already logged in
-  useEffect(() => {
-    supabase.auth.getUser().then(async ({ data: { user } }) => {
-      if (user) {
-        const { data } = await supabase
-          .from('users')
-          .select('role')
-          .eq('id', user.id)
-          .single();
-
-        const role = data?.role; //If data is not null or undefined, then return data.role
-
-        //If data is null or undefined, don’t throw an error, just return undefined
-
-        router.push(role === 'admin' ? '/admin' : '/unAuth');
-      }
-    });
-  }, [router]);
-
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -43,15 +24,7 @@ export default function LoginPage() {
       return;
     }
 
-    // Optional: fetch user role from your `users` table if needed
-    const { data: userRow } = await supabase
-      .from('users')
-      .select('role')
-      .eq('id', data.user.id)
-      .single();
-
-    const role = userRow?.role || 'user';
-    router.push(role === 'admin' ? '/admin' : '/dashboard');
+    router.push('/admin');
   };
 
   return (
