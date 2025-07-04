@@ -68,17 +68,30 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ---------------- Scheduled Messages (5 upcoming)
-    const { data: scheduledMessages, error: scheduledError } = await supabase
-      .from('messages')
-      .select('id, message, status, scheduled_at, contact_groups(group_name)')
-      .eq('user_id', user.id)
-      .eq('status', 'scheduled')
+    // ---------------- Scheduled Messages
 
-      .limit(5);
+    const { data: scheduledMessages, error: scheduledError } =
+      await supabase.rpc('get_scheduled_messages_with_groups', {
+        p_user_id: user.id,
+        p_limit: 5,
+      });
+
+    const flatScheduled = (
+      scheduledMessages as {
+        id: string;
+        message: string;
+        scheduled_at: string;
+        groups?: { id: string; group_name: string }[] | null;
+      }[]
+    ).map((msg) => ({
+      id: msg.id,
+      message: msg.message,
+      scheduled_at: msg.scheduled_at,
+      group_names: (msg.groups || []).map((g) => g.group_name),
+    }));
 
     if (scheduledError) {
-      console.error('🛑 Scheduled messages fetch error:', scheduledError);
+      console.error('🛑 Scheduled RPC error:', scheduledError.message);
       return NextResponse.json(
         { error: 'Failed to load scheduled messages' },
         { status: 500 },
@@ -105,7 +118,7 @@ export async function GET(req: NextRequest) {
       quota: quotaData.quota,
       sentToday: sentToday || 0,
       failedCount: failedCount || 0,
-      scheduled: scheduledMessages || [],
+      scheduled: flatScheduled || [],
     });
   } catch (err) {
     console.error('🔴 Unhandled /api/metrics error:', err);

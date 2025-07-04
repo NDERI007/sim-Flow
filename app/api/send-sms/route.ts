@@ -4,14 +4,20 @@ import { createServerClient } from '@supabase/ssr';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
 
-// Setup BullMQ with safe Redis settings
+// Setup BullMQ
 const connection = new Redis(process.env.REDIS_URL!, {
   tls: {},
-  maxRetriesPerRequest: null, // ✅ Prevent Redis-layer retries
+  maxRetriesPerRequest: null,
 });
-connection.ping().then(console.log).catch(console.error); // Should print "PONG"
 const smsQueue = new Queue('smsQueue', { connection });
-// Kenyan phone number validator + normalizer
+type GroupContact = {
+  contact: {
+    id: string;
+    phone: string;
+  } | null;
+  group_id: string;
+};
+
 export function validateAndFormatKenyanNumber(
   inputs: string[],
   options?: { dev?: boolean },
@@ -22,24 +28,17 @@ export function validateAndFormatKenyanNumber(
   for (let raw of inputs) {
     const cleaned = raw
       .trim()
-      .replace(/[\s\-().]/g, '') // remove whitespace, dashes, brackets, etc.
-      .replace(/^(\+)?254/, '0'); // convert +254 / 254 to 07
-
+      .replace(/[\s\-().]/g, '')
+      .replace(/^(\+)?254/, '0');
     const isValid = /^07\d{8}$/.test(cleaned);
 
     if (options?.dev) {
-      if (isValid) {
-        console.log(`✅ Fixed: ${raw} → ${cleaned}`);
-      } else {
-        console.log(`🔴 Invalid: ${raw}`);
-      }
+      if (isValid) console.log(`✅ Fixed: ${raw} → ${cleaned}`);
+      else console.log(`🔴 Invalid: ${raw}`);
     }
 
-    if (isValid) {
-      valid.push(cleaned);
-    } else {
-      invalid.push(raw);
-    }
+    if (isValid) valid.push(cleaned);
+    else invalid.push(raw);
   }
 
   if (invalid.length > 0) {
@@ -49,11 +48,7 @@ export function validateAndFormatKenyanNumber(
   return valid;
 }
 
-console.log('✅ Inside /api/send-sms POST handler');
-
 export async function POST(req: NextRequest) {
-  console.log('✅ Inside /api/send-sms POST handler');
-
   try {
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -66,34 +61,40 @@ export async function POST(req: NextRequest) {
       },
     );
 
-    console.log('🟡 Supabase client initialized');
-
     const {
       data: { user },
       error: authError,
     } = await supabase.auth.getUser();
 
-    console.log('🟡 Fetched user:', user);
-
     if (authError || !user) {
-      console.log('🔴 Unauthorized access attempt');
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
     const body = await req.json();
-    console.log('📦 Body:', body);
+    const {
+      to_number = [],
+      message,
+      scheduledAt,
+      contact_group_ids = [],
+    } = body;
+    console.log('📨 Incoming SMS payload:', {
+      to_number,
+      message,
+      scheduledAt,
+      contact_group_ids,
+    });
 
-    const { to_number, message, scheduledAt, contact_group_id } = body;
+    if (typeof message !== 'string' || message.trim().length === 0) {
+      return NextResponse.json(
+        { message: 'Message cannot be blank.' },
+        { status: 400 },
+      );
+    }
 
     let delay = 0;
-    let scheduledTime: Date | null = null;
-
     if (scheduledAt) {
-      scheduledTime = new Date(scheduledAt);
-      console.log('🕓 Scheduled for:', scheduledTime);
-
+      const scheduledTime = new Date(scheduledAt);
       if (isNaN(scheduledTime.getTime()) || scheduledTime <= new Date()) {
-        console.log('🔴 Invalid schedule date');
         return NextResponse.json(
           { message: 'Invalid future date' },
           { status: 400 },
@@ -102,110 +103,146 @@ export async function POST(req: NextRequest) {
       delay = scheduledTime.getTime() - Date.now();
     }
 
-    if (!Array.isArray(to_number)) {
-      console.log('🔴 to_numbers is not an array:', to_number);
-      return NextResponse.json({ message: 'Invalid input.' }, { status: 400 });
+    // 🟢 Fetch numbers from groups (if any)
+    let groupNumbers: { id: string; phone: string; group_id: string }[] = [];
+
+    if (Array.isArray(contact_group_ids) && contact_group_ids.length > 0) {
+      const { data: groupContacts, error: groupError } = (await supabase
+        .from('contact_group_members')
+        .select(
+          `
+          group_id,
+    contact:contacts (
+      id,
+      phone
+    )
+  `,
+        )
+        .in('group_id', contact_group_ids)) as unknown as {
+        data: GroupContact[];
+        error: any;
+      };
+
+      if (groupError) {
+        console.error('Failed to fetch group contacts:', groupError);
+        return NextResponse.json(
+          { message: 'Failed to fetch contacts' },
+          { status: 500 },
+        );
+      }
+      console.log('📇 Raw group contacts:', groupContacts);
+
+      groupNumbers = (groupContacts ?? [])
+        .filter((row) => row.contact?.id && row.contact?.phone && row.group_id)
+        .map((row) => ({
+          id: row.contact.id,
+          phone: row.contact.phone,
+          group_id: row.group_id,
+        }));
     }
 
-    if (to_number.length === 0) {
-      console.log('🔴 to_numbers is empty');
+    // 🟢 Validate manual numbers if provided
+    let manualNumbers: string[] = [];
+    if (Array.isArray(to_number) && to_number.length > 0) {
+      try {
+        manualNumbers = validateAndFormatKenyanNumber(to_number, { dev: true });
+      } catch (err: any) {
+        return NextResponse.json({ message: err.message }, { status: 400 });
+      }
+    }
+
+    // 🟢 Merge & deduplicate all numbers
+    const allRecipients = [
+      ...new Set([...manualNumbers, ...groupNumbers.map((g) => g.phone)]),
+    ];
+
+    if (allRecipients.length === 0) {
       return NextResponse.json(
-        { message: 'No recipients provided.' },
+        { message: 'No valid recipients found.' },
         { status: 400 },
       );
     }
-
-    if (typeof message !== 'string') {
-      console.log('🔴 message is not a string:', typeof message);
-      return NextResponse.json(
-        { message: 'Invalid message format.' },
-        { status: 400 },
-      );
-    }
-
-    if (message.trim().length === 0) {
-      console.log('🔴 message is blank:', JSON.stringify(message));
-      return NextResponse.json(
-        { message: 'Message cannot be blank.' },
-        { status: 400 },
-      );
-    }
-
-    let formattedNumbers: string[];
-
-    try {
-      formattedNumbers = validateAndFormatKenyanNumber(to_number, {
-        dev: true,
-      });
-      formattedNumbers = [...new Set(formattedNumbers)]; // optional deduplication
-    } catch (err: any) {
-      return NextResponse.json({ message: err.message }, { status: 400 });
-    }
+    console.log(
+      '📦 Recipients to insert into message_contacts:',
+      allRecipients,
+    );
 
     const segmentsPerMessage = Math.ceil((message.length || 0) / 160) || 1;
-    const totalSegments = segmentsPerMessage * formattedNumbers.length;
+    const totalSegments = segmentsPerMessage * allRecipients.length;
 
-    console.log('📝 Inserting messages into Supabase...');
-    const { data: insertedMessages, error: insertError } = await supabase
+    // 📝 Insert a single message row
+    const { data: messageRow, error: insertError } = await supabase
       .from('messages')
-      .insert(
-        formattedNumbers.map((to) => ({
-          to_number,
-          message,
+      .insert([
+        {
           user_id: user.id,
+          message,
           status: scheduledAt ? 'scheduled' : 'queued',
           scheduled_at: scheduledAt
             ? new Date(scheduledAt).toISOString()
             : null,
-          contact_group_id,
-        })),
-      )
-      .select();
-    console.log('📇 Group ID:', contact_group_id);
+        },
+      ])
+      .select()
+      .single();
 
-    if (insertError || !insertedMessages) {
-      console.log('❌ DB insert failed:', insertError?.message);
+    if (insertError || !messageRow) {
       return NextResponse.json(
-        { message: 'DB insert failed', error: insertError?.message },
+        { message: 'Failed to insert message', error: insertError?.message },
         { status: 500 },
       );
     }
 
-    console.log('📬 Inserting jobs to Redis queue...');
-    const jobs = insertedMessages.map((msg) => ({
-      name: 'send_sms',
-      data: {
-        message_id: msg.id,
+    //  Insert into message_contacts join table
+    // 🟢 Insert into message_contacts with group_id
+    const { error: joinError } = await supabase.from('message_contacts').insert(
+      groupNumbers.map(({ id, group_id }) => ({
+        message_id: messageRow.id,
+        contact_id: id,
+        group_id,
+      })),
+    );
+
+    if (joinError) {
+      console.error('❌ Supabase insert error:', {
+        message: joinError.message,
+        details: joinError.details,
+        hint: joinError.hint,
+      });
+      return NextResponse.json(
+        { message: 'Failed to link contacts', error: joinError?.message },
+        { status: 500 },
+      );
+    }
+
+    // 📬 Queue the job once (with full recipient list)
+    await smsQueue.add(
+      'send_sms',
+      {
+        message_id: messageRow.id,
         user_id: user.id,
-        to: msg.to,
-        message: msg.message,
+        message,
+        to_number: allRecipients,
         metadata: { source: 'dashboard', scheduled: Boolean(scheduledAt) },
       },
-      opts: {
-        jobId: msg.id,
+      {
         delay,
         attempts: 3,
         backoff: { type: 'exponential', delay: 5000 },
         removeOnComplete: true,
         removeOnFail: false,
       },
-    }));
-
-    await smsQueue.addBulk(jobs);
-    console.log('✅ Successfully enqueued all jobs');
+    );
 
     return NextResponse.json({
       success: true,
-      recipients: formattedNumbers.length,
+      recipients: allRecipients.length,
       scheduled: Boolean(scheduledAt),
       scheduledFor: scheduledAt ?? null,
       totalSegments,
     });
   } catch (err: any) {
-    console.error('❌ Caught Error in POST /api/send-sms');
-    console.error('Message:', err?.message || err);
-    console.error('Stack:', err?.stack || 'No stack');
-
+    console.error('❌ Error in /api/send-sms:', err);
     return NextResponse.json(
       {
         message: 'Internal Server Error',

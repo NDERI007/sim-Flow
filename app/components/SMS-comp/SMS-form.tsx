@@ -5,6 +5,7 @@ import ContactGroupSelector from './ContactSelcector';
 import axios from 'axios';
 import { CalendarClock } from 'lucide-react';
 import { useSmsStore } from '../../lib/smsStore';
+import { group } from 'console';
 
 export default function SmsForm() {
   const {
@@ -20,27 +21,22 @@ export default function SmsForm() {
   const [feedback, setFeedback] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
 
-  const getAllPhoneNumbers = (): string[] => {
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     const manualList = manualNumbers
       .split(/[\n,]+/)
       .map((n) => n.trim())
       .filter(Boolean);
 
-    const groupList = selectedGroup.flatMap((group) =>
-      group.contacts.map((c) => c.phone.trim()),
-    );
+    const contactGroupIDs = selectedGroup.map((group) => group.id);
 
-    return Array.from(new Set([...manualList, ...groupList]));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const contactGroupID =
-      selectedGroup.length === 1 ? selectedGroup[0].id : null;
-    const recipients = getAllPhoneNumbers();
-
-    if (!message.trim() || recipients.length === 0) {
-      setFeedback('❌ Message and at least one phone number are required.');
+    if (
+      !message.trim() ||
+      (manualList.length === 0 && contactGroupIDs.length === 0)
+    ) {
+      setFeedback(
+        '❌ Message and at least one phone number or group is required.',
+      );
       return;
     }
 
@@ -49,10 +45,10 @@ export default function SmsForm() {
 
     try {
       const res = await axios.post('/api/send-sms', {
-        to_number: recipients,
+        to_number: manualList,
         message,
         scheduledAt: scheduledAt || null,
-        contact_group_id: contactGroupID,
+        contact_group_ids: contactGroupIDs.length > 0 ? contactGroupIDs : null,
       });
 
       if (res.status !== 200) {

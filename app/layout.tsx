@@ -1,13 +1,12 @@
 'use client';
 import './globals.css';
-
 import { Inter } from 'next/font/google';
 import { useAuthStore } from './lib/AuthStore';
 import { useEffect } from 'react';
 
 export const inter = Inter({
   subsets: ['latin'],
-  weight: ['400', '600', '700'], // ✅ Load multiple weights
+  weight: ['400', '600', '700'],
   display: 'swap',
 });
 

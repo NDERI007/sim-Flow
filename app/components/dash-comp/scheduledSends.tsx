@@ -10,7 +10,7 @@ interface ScheduledMessage {
   id: string;
   message: string;
   scheduled_at: string;
-  group_name?: string | null;
+  group_names?: string[] | null;
 }
 
 interface MetricsData {
@@ -103,12 +103,12 @@ export default function ScheduledSendsList() {
 
                       <span
                         className={`rounded px-2 py-0.5 text-sm ${
-                          item.group_name
+                          item.group_names?.length
                             ? 'bg-pink-900/10 text-pink-400'
                             : 'bg-gray-800 text-gray-400 italic'
                         }`}
                       >
-                        {item.group_name || 'Ungrouped'}
+                        {item.group_names?.join() || 'Ungrouped'}
                       </span>
                     </div>
                   </div>
