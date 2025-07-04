@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { mutate } from 'swr';
 import { useAuthStore } from '../../lib/AuthStore';
 import { supabase } from '../../lib/supabase';
+import { error } from 'console';
 
 interface Contact {
   name: string;
@@ -179,8 +180,12 @@ export default function ContactGroupForm({
         },
         refreshSuccess ? 500 : 1000,
       );
-    } catch (err: any) {
-      setMessage(`❌ ${err.message}`);
+    } catch (err) {
+      if (err instanceof Error) {
+        setMessage(`❌ ${err.message}`);
+      } else {
+        setMessage('Unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }

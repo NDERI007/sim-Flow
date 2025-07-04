@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { Queue } from 'bullmq';
 import Redis from 'ioredis';
+import { PostgrestError } from '@supabase/supabase-js';
 
 // Setup BullMQ
 const connection = new Redis(process.env.REDIS_URL!, {
@@ -25,7 +26,7 @@ export function validateAndFormatKenyanNumber(
   const valid: string[] = [];
   const invalid: string[] = [];
 
-  for (let raw of inputs) {
+  for (const raw of inputs) {
     const cleaned = raw
       .trim()
       .replace(/[\s\-().]/g, '')
@@ -120,7 +121,7 @@ export async function POST(req: NextRequest) {
         )
         .in('group_id', contact_group_ids)) as unknown as {
         data: GroupContact[];
-        error: any;
+        error: PostgrestError | null;
       };
 
       if (groupError) {
@@ -141,17 +142,21 @@ export async function POST(req: NextRequest) {
         }));
     }
 
-    // 🟢 Validate manual numbers if provided
+    // Validate manual numbers if provided
     let manualNumbers: string[] = [];
     if (Array.isArray(to_number) && to_number.length > 0) {
       try {
         manualNumbers = validateAndFormatKenyanNumber(to_number, { dev: true });
-      } catch (err: any) {
-        return NextResponse.json({ message: err.message }, { status: 400 });
+      } catch (err) {
+        if (err instanceof Error) {
+          return NextResponse.json({ message: err.message }, { status: 400 });
+        }
+
+        return NextResponse.json({ message: 'Unknown error' }, { status: 500 });
       }
     }
 
-    // 🟢 Merge & deduplicate all numbers
+    // Merge & deduplicate all numbers
     const allRecipients = [
       ...new Set([...manualNumbers, ...groupNumbers.map((g) => g.phone)]),
     ];
@@ -241,8 +246,19 @@ export async function POST(req: NextRequest) {
       scheduledFor: scheduledAt ?? null,
       totalSegments,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('❌ Error in /api/send-sms:', err);
+
+    if (err instanceof Error) {
+      return NextResponse.json(
+        {
+          message: 'Internal Server Error',
+          error: err.message,
+          stack: err.stack ?? null,
+        },
+        { status: 500 },
+      );
+    }
     return NextResponse.json(
       {
         message: 'Internal Server Error',

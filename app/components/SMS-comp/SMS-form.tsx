@@ -5,7 +5,6 @@ import ContactGroupSelector from './ContactSelcector';
 import axios from 'axios';
 import { CalendarClock } from 'lucide-react';
 import { useSmsStore } from '../../lib/smsStore';
-import { group } from 'console';
 
 export default function SmsForm() {
   const {
@@ -58,8 +57,12 @@ export default function SmsForm() {
       setFeedback('✅ Message queued successfully!');
       setScheduledAt('');
       resetForm();
-    } catch (err: any) {
-      setFeedback(`❌ ${err.message}`);
+    } catch (err) {
+      if (err instanceof Error) {
+        setFeedback(`❌ ${err.message}`);
+      } else {
+        setFeedback('Unexpected error occurred');
+      }
     } finally {
       setLoading(false);
     }

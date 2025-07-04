@@ -4,8 +4,6 @@ import { useState } from 'react';
 import { Trash2, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
 import { ContactGroup } from '../../lib/smsStore';
 
-type Contact = ContactGroup['contacts'][number];
-
 interface ContactGroupCardProps {
   id: ContactGroup['id'];
   group_name: ContactGroup['group_name'];
@@ -16,7 +14,6 @@ interface ContactGroupCardProps {
 }
 
 export default function ContactGroupCard({
-  id,
   group_name,
   contacts,
   onDelete,

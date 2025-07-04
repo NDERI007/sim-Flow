@@ -10,11 +10,11 @@ type Template = {
 
 type Props = {
   template: Template;
-  onDelete: (id: string) => void;
   onUpdate: (id: string, name: string, content: string) => void;
+  onDelete: (id: string) => void;
 };
 
-export default function TemplateCard({ template, onDelete, onUpdate }: Props) {
+export default function TemplateCard({ template, onUpdate, onDelete }: Props) {
   const [editing, setEditing] = useState(false);
   const [name, setName] = useState(template.name);
   const [content, setContent] = useState(template.content);
@@ -22,7 +22,6 @@ export default function TemplateCard({ template, onDelete, onUpdate }: Props) {
   const debounceTimer = useRef<NodeJS.Timeout | null>(null);
   const initialRender = useRef(true);
 
-  // Debounced update effect
   useEffect(() => {
     if (!editing || initialRender.current) {
       initialRender.current = false;
@@ -32,9 +31,9 @@ export default function TemplateCard({ template, onDelete, onUpdate }: Props) {
     if (debounceTimer.current) clearTimeout(debounceTimer.current);
 
     debounceTimer.current = setTimeout(() => {
-      onUpdate(template.id, name, content);
+      onUpdate(template.id, name, content); // ✅ Notify parent only
     }, 500);
-  }, [name, content]);
+  }, [name, content, editing, onUpdate, template.id]);
 
   return (
     <div className="space-y-2 rounded-xl bg-gray-900 p-4 shadow-lg">

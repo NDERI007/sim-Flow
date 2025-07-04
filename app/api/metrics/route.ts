@@ -1,35 +1,32 @@
-// File: /app/api/metrics/route.ts
-import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { DateTime } from 'luxon';
 
 export async function GET(req: NextRequest) {
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    {
-      cookies: {
-        getAll: () => req.cookies.getAll(),
-        setAll: (cookies) => {},
-      },
-    },
-  );
-
   try {
-    // ---------------- Auth
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError) {
-      console.error('🛑 Auth Error:', authError.message);
-      return NextResponse.json({ error: 'Auth failed' }, { status: 401 });
+    // ---------------- Auth via access token
+    const token = req.headers.get('Authorization')?.replace('Bearer ', '');
+    if (!token) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    if (!user) {
-      console.error('🛑 No authenticated user');
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        global: {
+          headers: { Authorization: `Bearer ${token}` },
+        },
+      },
+    );
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
+
+    if (userError || !user) {
+      return NextResponse.json({ error: 'Invalid user' }, { status: 401 });
     }
 
     // ---------------- Quota
