@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 export default function EmailSubmissionForm() {
   const [email, setEmail] = useState('');
@@ -20,11 +20,17 @@ export default function EmailSubmissionForm() {
       await axios.post('/api/request-registration', { email, name });
       setStatus('success');
       setMessage('Request submitted successfully!');
-    } catch (err: any) {
+    } catch (err) {
+      let message = 'Something went wrong.';
+
+      if (err instanceof AxiosError) {
+        message = err.response?.data?.error || err.message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+
       setStatus('error');
-      setMessage(
-        err.response?.data?.error || 'Something went wrong. Please try again.',
-      );
+      setMessage(message);
     }
   };
 

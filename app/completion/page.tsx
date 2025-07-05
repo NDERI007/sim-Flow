@@ -19,11 +19,13 @@ export default function FinishRegistrationPage() {
         sender_id: senderId,
         password,
       });
-
-      // 🚫 Removed: router.push('/admin');
-      // ✅ If the server returns a redirect, we expect the browser to follow it
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Registration failed.');
+    } catch (err: unknown) {
+      const message = axios.isAxiosError(err)
+        ? err.response?.data?.error || err.message
+        : err instanceof Error
+          ? err.message
+          : 'Registration failed.';
+      setError(message);
     } finally {
       setLoading(false);
     }

@@ -95,7 +95,7 @@ export default function ScheduledSendsList() {
 
                     <div className="flex items-center justify-between text-xs text-gray-500">
                       <span>
-                        ⏰{' '}
+                        {' '}
                         {DateTime.fromISO(item.scheduled_at)
                           .setZone('Africa/Nairobi')
                           .toFormat('hh:mm a')}

@@ -29,21 +29,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid user' }, { status: 401 });
     }
 
-    // ---------------- Quota
-    const { data: quotaData, error: quotaError } = await supabase
-      .from('users')
-      .select('quota')
-      .eq('id', user.id)
-      .single();
-
-    if (quotaError) {
-      console.error('🛑 Quota fetch error:', quotaError);
-      return NextResponse.json(
-        { error: 'Failed to fetch quota' },
-        { status: 500 },
-      );
-    }
-
     // ---------------- Time Logic
     const eatNow = DateTime.now().setZone('Africa/Nairobi');
     const eatTodayStart = eatNow.startOf('day');
@@ -112,7 +97,6 @@ export async function GET(req: NextRequest) {
 
     // ---------------- Response
     return NextResponse.json({
-      quota: quotaData.quota,
       sentToday: sentToday || 0,
       failedCount: failedCount || 0,
       scheduled: flatScheduled || [],

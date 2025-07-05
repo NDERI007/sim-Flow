@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { mutate } from 'swr';
 import { useAuthStore } from '../../lib/AuthStore';
 import { supabase } from '../../lib/supabase';
-import { error } from 'console';
 
 interface Contact {
   name: string;

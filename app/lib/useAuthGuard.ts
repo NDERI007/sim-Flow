@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from './supabase';
+import { User } from '@supabase/supabase-js';
 
 export function useAuthGuard(redirectTo = '/unAuth') {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User>(null);
 
   useEffect(() => {
     const checkAuth = async () => {

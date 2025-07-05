@@ -7,14 +7,15 @@ import { useGroupedContacts } from '../lib/contactGroup';
 
 import ContactUploader from '../components/Contact-comp/contact-uploader';
 import Modal from '../components/modal';
+import { ContactGroup } from '../lib/smsStore';
 
 export default function ContactGroupsPage() {
   const { groups, error, isLoading } = useGroupedContacts();
   const [showForm, setShowForm] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<any>(null);
+  const [editingGroup, setEditingGroup] = useState<ContactGroup>(null);
   const [showUploader, setShowUploader] = useState(false);
 
-  const handleEditGroup = (group: any) => {
+  const handleEditGroup = (group: ContactGroup) => {
     setEditingGroup(group);
     setShowForm(true);
   };
@@ -39,7 +40,7 @@ export default function ContactGroupsPage() {
             onClick={() => setShowUploader(true)}
             className="rounded-xl bg-pink-900 px-5 py-2 text-sm font-semibold text-white shadow-md transition hover:scale-105 hover:bg-pink-800"
           >
-            📤 Upload Contacts
+            Upload Contacts
           </button>
         </div>
       </header>
@@ -66,9 +67,7 @@ export default function ContactGroupsPage() {
       )}
 
       {error && (
-        <p className="mt-4 font-medium text-pink-400">
-          ❌ Error: {error.message}
-        </p>
+        <p className="mt-4 font-medium text-pink-400">Error: {error.message}</p>
       )}
 
       {!isLoading && !error && groups?.length > 0 && (

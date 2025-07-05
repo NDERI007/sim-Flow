@@ -8,36 +8,75 @@ type Props = {
   loading: boolean;
 };
 
+const DRAFT_KEY = 'template-draft';
+
 export default function TemplateForm({ onCreate, loading }: Props) {
   const [name, setName] = useState('');
   const [content, setContent] = useState('');
-  const nameRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = async () => {
-    if (loading || !name.trim() || !content.trim()) return;
-    await onCreate(name.trim(), content.trim());
-    setName('');
-    setContent('');
-    nameRef.current?.focus();
-  };
+  // Hold latest values
+  const nameRef = useRef(name);
+  const contentRef = useRef(content);
 
-  // Debounced draft save
-  const debouncedSave = useDebouncedCallback(() => {
-    if (name.trim() || content.trim()) {
-      console.log('💾 Auto-saving draft:', { name, content });
-      // You could save to localStorage, Supabase drafts, etc.
+  // Keep refs up to date
+  useEffect(() => {
+    nameRef.current = name;
+    contentRef.current = content;
+  }, [name, content]);
+
+  // Load saved draft from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(DRAFT_KEY);
+    if (saved) {
+      try {
+        const draft = JSON.parse(saved);
+        if (draft.name) setName(draft.name);
+        if (draft.content) setContent(draft.content);
+      } catch (e) {
+        console.error('⚠️ Failed to parse saved draft', e);
+      }
     }
-  }, 1000); // 1s debounce
+  }, []);
 
-  // Trigger debounced save on changes
+  // Debounced save using refs
+  const debouncedSave = useDebouncedCallback(() => {
+    const currentName = nameRef.current.trim();
+    const currentContent = contentRef.current.trim();
+
+    if (currentName || currentContent) {
+      const draft = JSON.stringify({
+        name: currentName,
+        content: currentContent,
+      });
+      localStorage.setItem(DRAFT_KEY, draft);
+      console.log('💾 Auto-saved draft:', {
+        name: currentName,
+        content: currentContent,
+      });
+    }
+  }, 1000); // No dependency array
+
   useEffect(() => {
     debouncedSave();
-  }, [name, content]);
+  }, [name, content, debouncedSave]); // Still need to trigger on input changes
+
+  const handleSubmit = async () => {
+    const currentName = nameRef.current.trim();
+    const currentContent = contentRef.current.trim();
+    if (loading || !currentName || !currentContent) return;
+
+    await onCreate(currentName, currentContent);
+    setName('');
+    setContent('');
+    inputRef.current?.focus();
+    localStorage.removeItem(DRAFT_KEY);
+  };
 
   return (
     <div className="col-span-full space-y-2 rounded-xl bg-gray-900 p-4 shadow-lg">
       <input
-        ref={nameRef}
+        ref={inputRef}
         type="text"
         placeholder="Template Name"
         value={name}
@@ -49,7 +88,7 @@ export default function TemplateForm({ onCreate, loading }: Props) {
         value={content}
         onChange={(e) => setContent(e.target.value)}
         className="w-full rounded bg-gray-800 p-2 text-white placeholder-gray-400 outline-none"
-      ></textarea>
+      />
       <button
         onClick={handleSubmit}
         disabled={loading}

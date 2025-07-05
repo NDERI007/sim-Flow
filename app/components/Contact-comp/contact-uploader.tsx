@@ -36,11 +36,11 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
     try {
       if (ext === 'csv') {
         const text = await file.text();
-        const parsed = Papa.parse(text, {
+        const parsed = Papa.parse<Contact>(text, {
           header: true,
-          transformHeader: (h) => h.trim().toLowerCase(),
+          transformHeader: (h: string) => h.trim().toLowerCase(),
         });
-        parsedContacts = (parsed.data as any[]).map((row) => ({
+        parsedContacts = parsed.data.map((row: Contact) => ({
           name: String(row.name || '').trim(),
           phone: normalizePhone(String(row.phone || '').trim()),
         }));
@@ -127,8 +127,14 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
       setGroupName('');
       await refreshContactGroups();
       onComplete?.();
-    } catch (err: any) {
-      setError(err.message || 'Something went wrong');
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message || 'Something went wrong');
+      } else if (typeof err === 'object' && err !== null && 'message' in err) {
+        setError(String((err as { message: unknown }).message));
+      } else {
+        setError('Something went wrong');
+      }
     } finally {
       setLoading(false);
     }
@@ -212,7 +218,7 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
   );
 }
 
-// 📦 UTILITIES
+//Helper func
 
 function normalizePhone(phone: string) {
   phone = phone.replace(/\s|-/g, '');
