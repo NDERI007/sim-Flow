@@ -4,7 +4,7 @@ import { Inter } from 'next/font/google';
 import { useAuthStore } from './lib/AuthStore';
 import { useEffect } from 'react';
 
-export const inter = Inter({
+const inter = Inter({
   subsets: ['latin'],
   weight: ['400', '600', '700'],
   display: 'swap',
