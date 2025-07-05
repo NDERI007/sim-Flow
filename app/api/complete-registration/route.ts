@@ -81,19 +81,19 @@ export async function POST(req: NextRequest) {
   // Delete pending registration
   await supabase.from('pending_registrations').delete().eq('id', pending.id);
 
-  const res = NextResponse.redirect(new URL('/admin', req.url), 307);
+  const res = NextResponse.json({ success: true });
 
   // ✅ Set sb-access-token and sb-refresh-token
   res.cookies.set('sb-access-token', auth.session.access_token, {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
   });
 
   res.cookies.set('sb-refresh-token', auth.session.refresh_token, {
     httpOnly: true,
-    secure: false,
+    secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
     path: '/',
   });

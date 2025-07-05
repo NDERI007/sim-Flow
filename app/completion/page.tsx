@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import axios from 'axios';
+import { useRouter } from 'next/navigation';
 
 export default function FinishRegistrationPage() {
+  const router = useRouter();
   const [senderId, setSenderId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -15,10 +17,17 @@ export default function FinishRegistrationPage() {
     setLoading(true);
 
     try {
-      await axios.post('/api/complete-registration', {
-        sender_id: senderId,
-        password,
-      });
+      await axios.post(
+        '/api/complete-registration',
+        {
+          sender_id: senderId,
+          password,
+        },
+        {
+          withCredentials: true,
+        },
+      );
+      router.push('/admin');
     } catch (err: unknown) {
       const message = axios.isAxiosError(err)
         ? err.response?.data?.error || err.message
