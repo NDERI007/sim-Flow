@@ -19,7 +19,7 @@ type GroupContact = {
   group_id: string;
 };
 
-export function validateAndFormatKenyanNumber(
+function validateAndFormatKenyanNumber(
   inputs: string[],
   options?: { dev?: boolean },
 ): string[] {
