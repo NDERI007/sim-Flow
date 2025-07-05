@@ -13,7 +13,7 @@ export async function deleteContactGroup(
     return { success: false, error: error.message };
   }
 
-  return { success: true };
+  return { success: !error };
 }
 
 export function useGroupedContacts() {

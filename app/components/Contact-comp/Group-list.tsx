@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { refreshContactGroups } from '../../lib/useContactGroups';
 import { deleteContactGroup } from '../../lib/contactGroup';
 import ContactGroupCard from './contact-card';
 import { ContactGroup } from '../../lib/smsStore';
+import { mutate } from 'swr';
 
 interface ContactGroupListProps {
   groups: ContactGroup[];
@@ -29,7 +29,7 @@ export default function ContactGroupList({
     });
 
     if (success) {
-      refreshContactGroups();
+      await mutate('rpc:contacts-with-groups');
     }
   };
 

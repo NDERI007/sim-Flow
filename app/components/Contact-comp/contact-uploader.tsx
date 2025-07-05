@@ -5,7 +5,7 @@ import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
 import { useAuthStore } from '../../lib/AuthStore';
 import { supabase } from '../../lib/supabase';
-import { refreshContactGroups } from '../../lib/useContactGroups';
+import { mutate } from 'swr';
 
 interface Contact {
   name: string;
@@ -125,7 +125,7 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
       setContacts([]);
       setDuplicates([]);
       setGroupName('');
-      await refreshContactGroups();
+      await mutate('rpc:contact-with-groups');
       onComplete?.();
     } catch (err) {
       if (err instanceof Error) {
