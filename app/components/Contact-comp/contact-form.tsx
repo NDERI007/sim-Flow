@@ -130,17 +130,27 @@ export default function ContactGroupForm({
       }
 
       // 2. Insert or update contacts
-      const { data: insertedContacts, error: insertErr } = await supabase
+      const { error: insertErr } = await supabase
         .from('contacts')
         .upsert(cleanedContacts, {
           onConflict: 'user_id,phone',
-        })
-        .select('id');
+        });
 
       if (insertErr) throw insertErr;
 
-      // 3. Link to group
-      const contactIds = insertedContacts.map((c) => c.id);
+      // 2. Re-select to get ALL contact IDs (inserted and existing)
+      const { data: allContacts, error: selectErr } = await supabase
+        .from('contacts')
+        .select('id,phone')
+        .in(
+          'phone',
+          cleanedContacts.map((c) => c.phone),
+        )
+        .eq('user_id', userId); // Include user filter
+
+      if (selectErr) throw selectErr;
+
+      const contactIds = allContacts.map((c) => c.id);
       const linkData = contactIds.map((contact_id) => ({
         contact_id,
         group_id: groupId,

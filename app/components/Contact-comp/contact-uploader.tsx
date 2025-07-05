@@ -83,8 +83,8 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
       const { data: group, error: groupError } = await supabase
         .from('contact_groups')
         .upsert(
-          { name: groupName.trim(), user_id: userId },
-          { onConflict: 'name, user_id' },
+          { group_name: groupName.trim(), user_id: userId },
+          { onConflict: 'group_name, user_id' },
         )
         .select()
         .single();
@@ -97,11 +97,11 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
           .from('contacts')
           .upsert(
             chunk.map((c) => ({
-              contact_name: c.name,
-              contact_phone: c.phone,
+              name: c.name,
+              phone: c.phone,
               user_id: userId,
             })),
-            { onConflict: 'contact_phone,user_id' },
+            { onConflict: 'phone,user_id' },
           )
           .select();
 
@@ -113,7 +113,7 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
         }));
 
         const { error: linkError } = await supabase
-          .from('contacts_with_groups')
+          .from('contact_group_members')
           .upsert(links, { onConflict: 'contact_id,group_id' });
 
         if (linkError) throw linkError;
@@ -125,7 +125,7 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
       setContacts([]);
       setDuplicates([]);
       setGroupName('');
-      await mutate('rpc:contact-with-groups');
+      await mutate('rpc:contacts-with-groups');
       onComplete?.();
     } catch (err) {
       if (err instanceof Error) {

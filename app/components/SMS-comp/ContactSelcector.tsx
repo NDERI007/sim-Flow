@@ -1,70 +1,87 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
 import { useGroupedContacts } from '../../lib/contactGroup';
 import { useSmsStore } from '../../lib/smsStore';
+import { ChevronDown } from 'lucide-react';
+import clsx from 'clsx';
 
-const ContactGroupSelector = () => {
+export default function ContactGroupSelector() {
   const { groups, error, isLoading } = useGroupedContacts();
-  const selectedGroups = useSmsStore((state) => state.selectedGroup);
-  const toggleGroup = useSmsStore((state) => state.toggleGroup);
+  const selectedGroups = useSmsStore((s) => s.selectedGroup);
+  const toggleGroup = useSmsStore((s) => s.toggleGroup);
 
-  if (isLoading) {
-    return <p className="text-sm text-gray-400">Loading contact groups...</p>;
-  }
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
-  if (error) {
-    return (
-      <p className="text-sm text-red-500">
-        Error loading contact groups: {error.message}
-      </p>
-    );
-  }
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClick = (e: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(e.target as Node)
+      ) {
+        setOpen(false);
+      }
+    };
+    if (open) document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [open]);
 
-  if (!groups) return <p>Loading...</p>;
-
-  if (groups.length === 0) {
-    return (
-      <div className="rounded-xl bg-gray-50 py-8 text-center">
-        <div className="mb-2 text-4xl">📋</div>
-        <p className="font-medium text-gray-500">No contact groups available</p>
-        <p className="mt-1 text-sm text-gray-400">
-          Create groups first to use this feature
-        </p>
-      </div>
-    );
-  }
+  const isSelected = (id: string) => selectedGroups.some((g) => g.id === id);
 
   return (
-    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-      {groups.map((group) => {
-        const isSelected = selectedGroups.some((g) => g.id === group.id);
-        return (
-          <label
-            key={group.id}
-            className={`flex cursor-pointer items-center rounded-xl border-2 p-4 transition-all duration-200 hover:shadow-md ${
-              isSelected
-                ? 'border-pink-900 bg-slate-800 shadow-md'
-                : 'border-slate-700 hover:border-pink-900'
-            }`}
-          >
-            <input
-              type="checkbox"
-              checked={isSelected}
-              onChange={() => toggleGroup(group)}
-              className="h-4 w-4 rounded text-purple-600"
-            />
-            <div className="ml-3">
-              <div className="font-medium text-gray-300">
-                {group.group_name}
-              </div>
-              <div className="text-sm text-gray-400">
-                {group.contacts.length} contact
-                {group.contacts.length !== 1 ? 's' : ''}
-              </div>
-            </div>
-          </label>
-        );
-      })}
+    <div className="relative w-full max-w-xs" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setOpen((prev) => !prev)}
+        className={clsx(
+          'flex w-full items-center justify-between rounded-lg border border-zinc-600 bg-zinc-900 px-4 py-2 text-sm text-gray-300 shadow-sm transition hover:border-pink-900',
+        )}
+      >
+        {selectedGroups.length > 0
+          ? `${selectedGroups.length} group${selectedGroups.length > 1 ? 's' : ''} selected`
+          : 'Select contact groups'}
+        <ChevronDown className="ml-2 h-4 w-4" />
+      </button>
+
+      {open && (
+        <div className="absolute z-20 mt-2 w-full rounded-md border border-zinc-700 bg-zinc-900 shadow-lg">
+          {isLoading ? (
+            <p className="px-4 py-2 text-sm text-gray-400">Loading...</p>
+          ) : error ? (
+            <p className="px-4 py-2 text-sm text-red-500">
+              Error loading contact groups: {error.message}
+            </p>
+          ) : groups.length === 0 ? (
+            <p className="px-4 py-2 text-sm text-gray-400">
+              No contact groups available
+            </p>
+          ) : (
+            <ul className="max-h-64 overflow-y-auto text-sm">
+              {groups.map((group) => {
+                const selected = isSelected(group.id);
+                return (
+                  <li
+                    key={group.id}
+                    className="flex cursor-pointer items-center space-x-3 px-4 py-2 hover:bg-zinc-800"
+                    onClick={() => toggleGroup(group)}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => toggleGroup(group)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 accent-pink-600"
+                    />
+                    <span className="text-gray-200">{group.group_name}</span>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
-};
-
-export default ContactGroupSelector;
+}
