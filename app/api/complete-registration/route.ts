@@ -81,7 +81,13 @@ export async function POST(req: NextRequest) {
   // Delete pending registration
   await supabase.from('pending_registrations').delete().eq('id', pending.id);
 
-  const res = NextResponse.json({ success: true });
+  const res = NextResponse.json({
+    success: true,
+    session: {
+      access_token: auth.session.access_token,
+      refresh_token: auth.session.refresh_token,
+    },
+  });
 
   // ✅ Set sb-access-token and sb-refresh-token
   res.cookies.set('sb-access-token', auth.session.access_token, {

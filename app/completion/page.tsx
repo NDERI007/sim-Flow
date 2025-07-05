@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { supabase } from '../lib/supabase';
 
 export default function FinishRegistrationPage() {
   const router = useRouter();
@@ -17,7 +18,7 @@ export default function FinishRegistrationPage() {
     setLoading(true);
 
     try {
-      await axios.post(
+      const res = await axios.post(
         '/api/complete-registration',
         {
           sender_id: senderId,
@@ -27,7 +28,19 @@ export default function FinishRegistrationPage() {
           withCredentials: true,
         },
       );
-      router.push('/admin');
+
+      const session = res.data?.session;
+
+      if (session?.access_token && session?.refresh_token) {
+        // Sync client session state
+        const { error: setError } = await supabase.auth.setSession(session);
+        if (setError) throw new Error(setError.message);
+
+        // Navigate after session is hydrated
+        router.push('/admin');
+      } else {
+        throw new Error('No session returned.');
+      }
     } catch (err: unknown) {
       const message = axios.isAxiosError(err)
         ? err.response?.data?.error || err.message
