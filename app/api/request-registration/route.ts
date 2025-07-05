@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
         <p>Hello ${name},</p>
         <p>Your OTP is:</p>
         <h2>${otp}</h2>
-        <a href="${process.env.BASE_URL}/verify?email=${encodeURIComponent(email)}" target="_blank">Complete Registration</a>
+        <a href="${process.env.NEXT_PUBLIC_BASE_URL}/verify?email=${encodeURIComponent(email)}" target="_blank">Complete Registration</a>
   
         <p>It will expire at <strong>${eatExpiry.toFormat('hh:mm a')} EAT</strong>.</p>
         <p>If you didn’t request this, you can ignore this email.</p>
