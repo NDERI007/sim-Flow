@@ -159,10 +159,10 @@ export default function ContactGroupForm({
       setContacts([{ name: '', phone: '' }]);
       setEditingGroup(null);
       onClose();
-      // 2. Try to refresh materialized view
+      // 2. Try to refresh
       const tryRefreshView = async (retries = 3) => {
         for (let i = 0; i < retries; i++) {
-          const { error } = await supabase.rpc('refresh_contacts_view');
+          const { error } = await supabase.rpc('get_user_contacts_with_groups');
           if (!error) return true;
           console.warn(`View refresh failed (try ${i + 1}):`, error.message);
           await new Promise((res) => setTimeout(res, 500)); // wait before retry

@@ -22,11 +22,12 @@ export function useGroupedContacts() {
     error,
     isLoading,
   } = useSWR(
-    'contacts-with-groups',
+    'rpc:contacts-with-groups',
     async () => {
-      const { data, error } = await supabase
-        .from('contacts_with_groups')
-        .select('*');
+      const { data, error } = await supabase.rpc(
+        'get_user_contacts_with_groups',
+      );
+
       if (error) throw error;
       return data;
     },
