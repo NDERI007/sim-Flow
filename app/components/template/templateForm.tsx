@@ -78,7 +78,7 @@ export default function TemplateForm({ onCreate, loading }: Props) {
       <input
         ref={inputRef}
         type="text"
-        placeholder="Template Name"
+        placeholder="Template Label"
         value={name}
         onChange={(e) => setName(e.target.value)}
         className="w-full rounded bg-gray-800 p-2 text-white placeholder-gray-400 outline-none"

@@ -1,10 +1,15 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import ContactGroupSelector from './ContactSelcector';
 import axios from 'axios';
 import { CalendarClock } from 'lucide-react';
 import { useSmsStore } from '../../lib/smsStore';
+
+import { fetchTemplates } from '../../lib/templates';
+import useSWR from 'swr';
+import { useAuthStore } from '../../lib/AuthStore';
+import TemplateDropdown from '../template/templateDrop';
 
 export default function SmsForm() {
   const {
@@ -15,6 +20,18 @@ export default function SmsForm() {
     setMessage,
     resetForm,
   } = useSmsStore();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const stableTokenRef = useRef(accessToken);
+
+  const {
+    data: templates = [],
+    isLoading: loadingTemplates,
+    error: templatesError,
+  } = useSWR(
+    stableTokenRef.current ? ['templates', stableTokenRef.current] : null,
+    () => fetchTemplates(stableTokenRef.current!),
+    { revalidateOnFocus: false },
+  );
 
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -85,6 +102,12 @@ export default function SmsForm() {
           placeholder="Enter phone numbers separated by commas or new lines"
           className="w-full rounded-lg bg-gray-900 px-4 py-3 text-sm text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-pink-900"
           rows={5}
+        />
+        <TemplateDropdown
+          templates={templates}
+          loading={loadingTemplates}
+          onSelect={(template) => setMessage(template.content)}
+          error={templatesError}
         />
 
         <label className="mt-4 mb-2 block text-sm font-medium text-gray-500">
