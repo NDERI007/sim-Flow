@@ -22,7 +22,7 @@ export default function VerifyPage() {
     try {
       const res = await axios.post('/api/verify-otp', { email, otp });
       if (res.data?.ok) {
-        router.push('/finish');
+        router.push('/completion');
       } else {
         setStatus('error');
       }
