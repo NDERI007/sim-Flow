@@ -104,7 +104,7 @@ export default function LoginPage() {
         >
           Log In
         </button>
-        <Link href={'/forgot-password'} className="text-blue cursor-pointer">
+        <Link href={'/forgot-password'} className="cursor-pointer text-white">
           Forgot password?
         </Link>
       </form>
