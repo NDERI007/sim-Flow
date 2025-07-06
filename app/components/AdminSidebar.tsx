@@ -68,7 +68,7 @@ export default function AdminSidebar() {
         {/* Close Button */}
         <div className="mb-6 flex items-center justify-between md:hidden">
           <div className="text-semibold mb-4 rounded-lg p-3 text-gray-200 shadow">
-            👋 Welcome back,{' '}
+            Welcome back,{' '}
             <span className="font-semibold text-white">{displayName}</span>!
           </div>
 
@@ -79,7 +79,7 @@ export default function AdminSidebar() {
 
         {/* Only show heading on md+ */}
         <div className="mb-6 hidden text-xl font-bold text-gray-200 md:block">
-          👋 Welcome back,{' '}
+          Welcome back,{' '}
           <span className="font-semibold text-white">{displayName}</span>!
         </div>
 

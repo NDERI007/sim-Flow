@@ -40,13 +40,13 @@ export default function ResetPasswordPage() {
         onSubmit={handleReset}
         className="w-full max-w-md space-y-5 rounded-xl bg-gray-900 p-6 shadow-lg"
       >
-        <h1 className="text-2xl font-semibold text-pink-400">Reset Password</h1>
+        <h1 className="text-2xl font-semibold text-gray-500">Reset Password</h1>
 
         <div className="relative">
           <input
             type={show ? 'text' : 'password'}
             placeholder="New password"
-            className="w-full rounded-md border border-pink-900 bg-gray-800 px-4 py-2 pr-10 text-white placeholder-gray-400 focus:ring-2 focus:ring-pink-900 focus:outline-none"
+            className="w-full rounded-md bg-gray-800 px-4 py-2 pr-10 text-white placeholder-gray-400 focus:outline-none"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

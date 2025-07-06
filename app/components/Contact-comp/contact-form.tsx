@@ -240,7 +240,7 @@ export default function ContactGroupForm({
               <button
                 type="button"
                 onClick={() => removeContactRow(index)}
-                className="rounded bg-pink-900 px-3 text-white"
+                className="rounded bg-gray-800 px-3 text-white hover:bg-gray-700"
               >
                 ✕
               </button>

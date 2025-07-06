@@ -15,35 +15,35 @@ export default function SummaryCards() {
       icon: BarChart,
       color:
         quota == null || quotaLoading
-          ? 'text-gray-400 dark:text-gray-500'
+          ? 'text-gray-600 text-gray-400'
           : quota <= 0
-            ? 'text-red-600 dark:text-red-400'
+            ? 'text-red-800 text-red-300'
             : quota <= 10
-              ? 'text-yellow-600 dark:text-yellow-400'
-              : 'text-green-600 dark:text-green-400',
+              ? 'text-yellow-800 text-yellow-300'
+              : 'text-green-800 text-green-300',
       bgColor:
         quota == null || quotaLoading
-          ? 'bg-gray-100 dark:bg-gray-800'
+          ? 'bg-gray-100 bg-gray-800'
           : quota <= 0
-            ? 'bg-red-100 dark:bg-red-900/40'
+            ? 'bg-red-50 bg-red-900/40'
             : quota <= 10
-              ? 'bg-yellow-100 dark:bg-yellow-900/40'
-              : 'bg-green-100 dark:bg-green-900/40',
+              ? 'bg-yellow-50 bg-yellow-900/40'
+              : 'bg-green-50 dark:bg-green-900/40',
       showUpgrade: quota != null && quota <= 10,
     },
     {
       label: 'Sent Today',
       value: sentToday ?? '...',
       icon: MessageCircle,
-      color: 'text-blue-600 dark:text-blue-400',
-      bgColor: 'bg-blue-100 dark:bg-blue-900/40',
+      color: 'text-blue-800 dark:text-blue-300',
+      bgColor: 'bg-blue-50 dark:bg-blue-900/40',
     },
     {
       label: 'Failed Messages',
       value: failedCount ?? '...',
       icon: AlertTriangle,
-      color: 'text-red-600 dark:text-red-400',
-      bgColor: 'bg-red-100 dark:bg-red-900/40',
+      color: 'text-red-800 dark:text-red-300',
+      bgColor: 'bg-red-50 dark:bg-red-900/40',
     },
   ];
 

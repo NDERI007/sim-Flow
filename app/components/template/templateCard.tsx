@@ -69,9 +69,7 @@ export default function TemplateCard({ template, onUpdate, onDelete }: Props) {
         </>
       ) : (
         <>
-          <h3 className="text-lg font-semibold text-pink-200">
-            {template.name}
-          </h3>
+          <p className="text-lg font-semibold text-gray-400">{template.name}</p>
           <p className="text-sm text-gray-300">{template.content}</p>
           <div className="mt-2 space-x-2">
             <button

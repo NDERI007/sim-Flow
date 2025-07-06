@@ -32,7 +32,7 @@ export default function ForgotPasswordPage() {
         onSubmit={handleSendReset}
         className="w-full max-w-md space-y-5 rounded-xl bg-gray-900 p-6 shadow-lg"
       >
-        <h1 className="text-2xl font-semibold text-pink-400">
+        <h1 className="text-2xl font-semibold text-gray-500">
           Forgot Password
         </h1>
 
@@ -40,7 +40,7 @@ export default function ForgotPasswordPage() {
           type="email"
           autoFocus
           placeholder="Email"
-          className="w-full rounded-md border border-pink-900 bg-gray-800 px-4 py-2 text-white placeholder-gray-400 focus:ring-2 focus:ring-pink-900 focus:outline-none"
+          className="w-full rounded-md bg-gray-800 px-4 py-2 text-white placeholder-gray-400 focus:outline-none"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           required
@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
         <button
           type="submit"
           disabled={loading}
-          className="w-full rounded bg-pink-900 px-4 py-2 font-medium text-white hover:bg-pink-800 disabled:bg-pink-700"
+          className="w-full rounded bg-pink-900 px-4 py-2 font-medium text-white transition duration-150 ease-in-out hover:bg-pink-800 focus:ring-2 focus:ring-pink-500 focus:outline-none active:bg-pink-950 disabled:cursor-not-allowed disabled:bg-pink-700"
         >
           {loading ? 'Sending...' : 'Send Reset Link'}
         </button>

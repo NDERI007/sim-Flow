@@ -156,7 +156,7 @@ export default function SmsForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full cursor-pointer rounded-lg bg-pink-900 py-3 font-semibold text-white transition hover:bg-pink-800 disabled:opacity-50"
+        className="w-full cursor-pointer rounded-lg bg-pink-900 py-3 font-semibold text-white transition duration-150 ease-in-out hover:bg-pink-800 focus:ring-2 focus:ring-pink-500 focus:outline-none active:scale-95 active:bg-pink-950 disabled:cursor-not-allowed disabled:opacity-50"
       >
         {loading ? 'Sending...' : 'Send SMS'}
       </button>
