@@ -31,6 +31,8 @@ export default function RootLayout({
     'verify',
     '/',
     '/admin',
+    '/forgot-password',
+    '/reset-password',
   ];
   const showHeader = !HideHeaderOn.includes(pathname);
   return (

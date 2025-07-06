@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase';
+import Link from 'next/link';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -103,6 +104,9 @@ export default function LoginPage() {
         >
           Log In
         </button>
+        <Link href={'/forgot-password'} className="text-blue cursor-pointer">
+          Forgot password?
+        </Link>
       </form>
     </main>
   );
