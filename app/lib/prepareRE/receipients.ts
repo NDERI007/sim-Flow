@@ -1,3 +1,4 @@
+import { calculateSmsSegments } from '../smsSegm/segments';
 import { validateAndFormatKenyanNumber } from '../validator/phoneN';
 
 export type Contact = {
@@ -30,7 +31,6 @@ export function prepareRecipients({
   message,
   devMode = false,
 }: PrepareRecipientsOptions): PreparedRecipientsResult {
-  // Validate + format manual numbers
   const formattedManual = validateAndFormatKenyanNumber(manualNumbers, {
     dev: devMode,
   });
@@ -40,10 +40,9 @@ export function prepareRecipients({
     .map((c) => c.phone.trim());
 
   const merged = [...formattedManual, ...groupPhones];
-
   const deduped = Array.from(new Set(merged));
 
-  const segmentsPerMessage = Math.ceil((message?.length || 1) / 160) || 1;
+  const segmentsPerMessage = calculateSmsSegments(message);
   const totalSegments = segmentsPerMessage * deduped.length;
 
   return {

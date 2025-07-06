@@ -169,6 +169,7 @@ export async function POST(req: NextRequest) {
         user_id: user.id,
         message,
         to_number: allPhones,
+        cumulative: totalSegments,
         metadata: { source: 'dashboard', scheduled: Boolean(scheduledAt) },
       },
       {
