@@ -184,7 +184,7 @@ const smsWorker = new Worker(
     // 2. Deduct quota
     const { error: quotaError } = await supabase.rpc('deduct_quota_and_log', {
       uid: user_id,
-      amount: cumulative,
+      delta: cumulative,
       reason: 'send-sms',
       related_id: message_id,
     });
@@ -262,7 +262,7 @@ smsWorker.on('failed', async (job: Job | undefined, err) => {
 
     await supabase.rpc('refund_quota_and_log', {
       uid: job.data.user_id,
-      amount: refundAmount,
+      delta: refundAmount,
       reason: 'retries_exhausted',
       related_id: job.data.message_id,
     });
