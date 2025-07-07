@@ -32,10 +32,17 @@ function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   });
 }
 
-//helper func
-function classifyOnfonError(
-  code: string,
-): 'RETRIABLE' | 'NON_RETRIABLE' | 'UNKNOWN' {
+const ONFON_ENDPOINT = 'https://api.onfonmedia.co.ke/v1/sms/SendBulkSMS';
+const MAX_BATCH_SIZE = 500;
+
+type OnfonResult = {
+  status: 'success' | 'failed';
+  code?: string;
+  message: string;
+  type?: 'RETRIABLE' | 'NON_RETRIABLE' | 'UNKNOWN';
+};
+
+function classifyOnfonError(code: string): OnfonResult['type'] {
   const RETRIABLE = new Set(['006', '033', '034']);
   const NON_RETRIABLE = new Set([
     '007',
@@ -64,28 +71,47 @@ function classifyOnfonError(
     '808',
     '809',
   ]);
-
   if (RETRIABLE.has(code)) return 'RETRIABLE';
   if (NON_RETRIABLE.has(code)) return 'NON_RETRIABLE';
   return 'UNKNOWN';
 }
 
-const ONFON_ENDPOINT = 'https://api.onfonmedia.co.ke/v1/sms/SendBulkSMS';
-const MAX_BATCH_SIZE = 500;
-
-type OnfonResult = {
-  status: 'success' | 'failed';
-  code?: string;
-  message: string;
-  type?: 'RETRIABLE' | 'NON_RETRIABLE' | 'UNKNOWN';
-};
-
-function chunkArray<T>(arr: T[], chunkSize: number): T[][] {
+function chunkArray<T>(arr: T[], size: number): T[][] {
   const result: T[][] = [];
-  for (let i = 0; i < arr.length; i += chunkSize) {
-    result.push(arr.slice(i, i + chunkSize));
+  for (let i = 0; i < arr.length; i += size) {
+    result.push(arr.slice(i, i + size));
   }
   return result;
+}
+
+function parseOnfonError(err: unknown): OnfonResult {
+  if (err instanceof Error && err.message === 'TIMEOUT') {
+    return {
+      status: 'failed',
+      code: 'TIMEOUT',
+      message: 'Request timed out',
+      type: 'RETRIABLE',
+    };
+  }
+
+  if (axios.isAxiosError(err)) {
+    const code = err.response?.data?.code ?? 'NETWORK_ERROR';
+    const message = err.response?.data?.message ?? err.message;
+
+    return {
+      status: 'failed',
+      code,
+      message,
+      type: classifyOnfonError(code),
+    };
+  }
+
+  return {
+    status: 'failed',
+    code: 'UNKNOWN_ERROR',
+    message: 'Unexpected error',
+    type: 'UNKNOWN',
+  };
 }
 
 export async function sendSmsViaOnfon(
@@ -95,32 +121,36 @@ export async function sendSmsViaOnfon(
 ): Promise<OnfonResult[]> {
   const recipients = typeof to === 'string' ? [to] : to;
 
-  if (!sender_id) throw new Error('Missing sender_id');
-  if (!process.env.ONFON_ACCESS_KEY)
-    throw new Error('Missing ONFON_ACCESS_KEY');
+  const apiKey = process.env.ONFON_ACCESS_KEY;
+  const clientId = process.env.ONFON_CLIENT_ID;
 
-  const batches = chunkArray(recipients, MAX_BATCH_SIZE);
+  if (!sender_id) throw new Error('Missing sender_id');
+  if (!apiKey) throw new Error('Missing ONFON_ACCESS_KEY');
+  if (!clientId) throw new Error('Missing ONFON_CLIENT_ID');
+
   const results: OnfonResult[] = [];
+  const batches = chunkArray(recipients, MAX_BATCH_SIZE);
 
   for (const batch of batches) {
-    try {
-      const res = await axios.post(
-        ONFON_ENDPOINT,
-        {
-          sender_name: sender_id,
-          message,
-          recipients: batch,
-        },
-        {
-          headers: {
-            'Content-Type': 'application/json',
-            accesskey: process.env.ONFON_ACCESS_KEY!,
-          },
-          timeout: 10_000,
-        },
-      );
+    const payload = {
+      SenderId: sender_id,
+      ApiKey: apiKey,
+      ClientId: clientId,
+      MessageParameters: batch.map((number) => ({
+        Number: number,
+        Text: message,
+      })),
+    };
 
-      const data = res.data;
+    try {
+      const response = await axios.post(ONFON_ENDPOINT, payload, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        timeout: 10_000,
+      });
+
+      const data = response.data;
 
       if (data.status === 'success') {
         results.push({
@@ -132,23 +162,12 @@ export async function sendSmsViaOnfon(
         results.push({
           status: 'failed',
           code,
-          message: data.message ?? 'Unknown Onfon error',
+          message: data.message ?? 'Unknown error',
           type: classifyOnfonError(code),
         });
       }
-    } catch (err: any) {
-      const code = err?.response?.data?.code ?? 'NETWORK_ERROR';
-      const message =
-        err?.response?.data?.message ??
-        err.message ??
-        'Failed to reach Onfon API';
-
-      results.push({
-        status: 'failed',
-        code,
-        message,
-        type: classifyOnfonError(code),
-      });
+    } catch (err) {
+      results.push(parseOnfonError(err));
     }
   }
 
