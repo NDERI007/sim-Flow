@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { DateTime } from 'luxon';
 import dotenv from 'dotenv';
 import axios from 'axios';
+import { Job } from 'bullmq';
 
 dotenv.config();
 
@@ -165,6 +166,9 @@ const smsWorker = new Worker(
       .select('quota, sender_id')
       .eq('id', user_id)
       .single();
+    if (!user) {
+      throw new Error('USER_NOT_FOUND');
+    }
 
     if (user.quota < cumulative) {
       throw new Error(`INSUFFICIENT_QUOTA`);
@@ -225,18 +229,24 @@ smsWorker.on('completed', async (job) => {
 });
 
 // Failure + Conditional Refund
-smsWorker.on('failed', async (job, err) => {
-  console.error(`❌ Job ${job?.id} failed: ${err.message}`);
+
+smsWorker.on('failed', async (job: Job | undefined, err) => {
+  if (!job) {
+    console.error('❌ Failed job is undefined');
+    return;
+  }
+  console.error(`❌ Job ${job.id} failed: ${err.message}`);
+
   const eatNow = DateTime.now().setZone('Africa/Nairobi').toISO();
 
-  if (job?.data?.message_id) {
-    await supabase
-      .from('messages')
-      .update({ status: 'failed', failed_at: eatNow, error: err.message })
-      .eq('id', job.data.message_id);
-  }
-
-  // Refund quota ONLY for retriable errors and only on last attempt
+  await supabase
+    .from('messages')
+    .update({
+      status: 'failed',
+      failed_at: eatNow,
+      error: err.message,
+    })
+    .eq('id', job.data.message_id);
 
   const isRetriable =
     String(err.message).startsWith('RETRIABLE') || err.message === 'TIMEOUT';
@@ -244,7 +254,7 @@ smsWorker.on('failed', async (job, err) => {
   const isFinalAttempt = job.attemptsMade + 1 >= (job.opts.attempts || 1);
 
   if (isRetriable && isFinalAttempt) {
-    const refundAmount = job.data.cumulative ?? 1; // fallback if missing
+    const refundAmount = job.data.cumulative ?? 1;
 
     console.log(
       `Refunding ${refundAmount} segment(s) for user ${job.data.user_id}`,
