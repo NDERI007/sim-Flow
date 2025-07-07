@@ -2,12 +2,13 @@
   "name": "iura",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "worker": "ts-node worker/sms-worker.ts"
+    "worker": "ts-node-esm worker/sms-worker.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
@@ -24,6 +25,7 @@
     "luxon": "^3.6.1",
     "next": "15.3.3",
     "papaparse": "^5.5.3",
+    "railway": "^2.0.17",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "resend": "^4.6.0",

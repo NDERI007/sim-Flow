@@ -4,7 +4,6 @@ import { createClient } from '@supabase/supabase-js';
 import { DateTime } from 'luxon';
 import dotenv from 'dotenv';
 import axios from 'axios';
-import { relative } from 'path';
 
 dotenv.config();
 
@@ -190,10 +189,9 @@ const smsWorker = new Worker(
     }
 
     // 3. Send SMS
-    const [response] = await sendSmsViaOnfon(
-      to_number,
-      message,
-      user.sender_id,
+    const [response] = await withTimeout(
+      sendSmsViaOnfon(to_number, message, user.sender_id),
+      10_000,
     );
 
     if (response.status === 'failed') {
