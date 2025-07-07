@@ -1,33 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
-
-// Extract Supabase client and user from request
-async function getSupabaseClientFromRequest(req: NextRequest) {
-  const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) return { error: 'Missing token', supabase: null, user: null };
-
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    },
-  );
-
-  const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
-
-  if (error || !user)
-    return { error: 'Invalid user', supabase: null, user: null };
-
-  return { supabase, user, error: null };
-}
+import { getSupabaseClientFromRequest } from '../../../lib/supabase-server/server';
 
 // Helper to extract `id` from request URL
 function getIdFromUrl(req: NextRequest) {
@@ -74,6 +46,9 @@ export async function DELETE(req: NextRequest) {
   }
 
   const id = getIdFromUrl(req);
+  if (!id) {
+    return NextResponse.json({ error: 'Missing ID' }, { status: 400 });
+  }
 
   const { error: deleteError } = await supabase
     .from('templates')

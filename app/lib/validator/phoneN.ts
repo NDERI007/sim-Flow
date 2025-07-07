@@ -1,4 +1,3 @@
-// lib/validators/phone.ts
 export function validateAndFormatKenyanNumber(
   inputs: string[],
   options?: { dev?: boolean },
@@ -7,19 +6,26 @@ export function validateAndFormatKenyanNumber(
   const invalid: string[] = [];
 
   for (const raw of inputs) {
-    const cleaned = raw
-      .trim()
-      .replace(/[\s\-().]/g, '')
-      .replace(/^(\+)?254/, '0');
-    const isValid = /^07\d{8}$/.test(cleaned);
+    let cleaned = raw.trim().replace(/[\s\-().]/g, '');
 
-    if (options?.dev) {
-      if (isValid) console.log(`✅ Fixed: ${raw} → ${cleaned}`);
-      else console.log(`🔴 Invalid: ${raw}`);
+    // Normalize to E.164 without the +
+    if (cleaned.startsWith('+')) cleaned = cleaned.slice(1);
+    if (cleaned.startsWith('0')) cleaned = '254' + cleaned.slice(1);
+    else if (cleaned.startsWith('7')) cleaned = '254' + cleaned;
+    else if (!cleaned.startsWith('254')) {
+      invalid.push(raw);
+      if (options?.dev) console.log(`🔴 Invalid: ${raw}`);
+      continue;
     }
 
-    if (isValid) valid.push(cleaned);
-    else invalid.push(raw);
+    // Final validation
+    if (/^2547\d{8}$/.test(cleaned)) {
+      valid.push(cleaned);
+      if (options?.dev) console.log(`✅ Valid: ${raw} → ${cleaned}`);
+    } else {
+      invalid.push(raw);
+      if (options?.dev) console.log(`🔴 Invalid: ${raw}`);
+    }
   }
 
   if (invalid.length > 0) {

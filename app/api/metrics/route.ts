@@ -1,32 +1,14 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 import { DateTime } from 'luxon';
+import { getSupabaseClientFromRequest } from '../../lib/supabase-server/server';
 
 export async function GET(req: NextRequest) {
   try {
     // ---------------- Auth via access token
-    const token = req.headers.get('Authorization')?.replace('Bearer ', '');
-    if (!token) {
+    const { user, supabase, error } = await getSupabaseClientFromRequest(req);
+
+    if (error || !user || !supabase) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: {
-          headers: { Authorization: `Bearer ${token}` },
-        },
-      },
-    );
-
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Invalid user' }, { status: 401 });
     }
 
     // ---------------- Time Logic

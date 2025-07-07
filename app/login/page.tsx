@@ -47,7 +47,7 @@ export default function LoginPage() {
   if (checkingSession) {
     return (
       <main className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
-        <p>Checking session...</p>
+        <p>Checking if yous valid</p>
       </main>
     );
   }
@@ -100,7 +100,7 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          className="w-full rounded-md bg-pink-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-fuchsia-600 focus:ring-2 focus:ring-fuchsia-700 focus:outline-none"
+          className="w-full rounded-md bg-pink-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-fuchsia-600 focus:outline-none"
         >
           Log In
         </button>

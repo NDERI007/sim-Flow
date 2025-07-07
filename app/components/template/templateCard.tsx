@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState } from 'react';
 
 type Template = {
   id: string;
@@ -19,21 +19,12 @@ export default function TemplateCard({ template, onUpdate, onDelete }: Props) {
   const [name, setName] = useState(template.name);
   const [content, setContent] = useState(template.content);
 
-  const debounceTimer = useRef<NodeJS.Timeout | null>(null);
-  const initialRender = useRef(true);
-
-  useEffect(() => {
-    if (!editing || initialRender.current) {
-      initialRender.current = false;
-      return;
+  const handleDone = () => {
+    if (name !== template.name || content !== template.content) {
+      onUpdate(template.id, name, content); // Save only if changes
     }
-
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-
-    debounceTimer.current = setTimeout(() => {
-      onUpdate(template.id, name, content); // ✅ Notify parent only
-    }, 500);
-  }, [name, content, editing, onUpdate, template.id]);
+    setEditing(false);
+  };
 
   return (
     <div className="space-y-2 rounded-xl bg-gray-900 p-4 shadow-lg">
@@ -51,7 +42,7 @@ export default function TemplateCard({ template, onUpdate, onDelete }: Props) {
             className="w-full rounded bg-gray-800 p-2 text-white outline-none"
           />
           <button
-            onClick={() => setEditing(false)}
+            onClick={handleDone}
             className="rounded bg-pink-900 px-4 py-1 text-white hover:bg-pink-700"
           >
             Done

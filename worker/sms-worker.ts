@@ -3,6 +3,8 @@ import Redis from 'ioredis';
 import { createClient } from '@supabase/supabase-js';
 import { DateTime } from 'luxon';
 import dotenv from 'dotenv';
+import axios from 'axios';
+import { relative } from 'path';
 
 dotenv.config();
 
@@ -15,7 +17,6 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-// Timeout wrapper
 function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const id = setTimeout(() => reject(new Error('TIMEOUT')), ms);
@@ -69,13 +70,89 @@ function classifyOnfonError(
   return 'UNKNOWN';
 }
 
-async function sendSmsViaOnfon(to: string, message: string) {
-  // Simulate real API call
-  return {
-    status: 'failed', // or 'success'
-    code: '006',
-    message: 'Something went wrong',
-  };
+const ONFON_ENDPOINT = 'https://api.onfonmedia.co.ke/v1/sms/SendBulkSMS';
+const MAX_BATCH_SIZE = 500;
+
+type OnfonResult = {
+  status: 'success' | 'failed';
+  code?: string;
+  message: string;
+  type?: 'RETRIABLE' | 'NON_RETRIABLE' | 'UNKNOWN';
+};
+
+function chunkArray<T>(arr: T[], chunkSize: number): T[][] {
+  const result: T[][] = [];
+  for (let i = 0; i < arr.length; i += chunkSize) {
+    result.push(arr.slice(i, i + chunkSize));
+  }
+  return result;
+}
+
+export async function sendSmsViaOnfon(
+  to: string | string[],
+  message: string,
+  sender_id: string,
+): Promise<OnfonResult[]> {
+  const recipients = typeof to === 'string' ? [to] : to;
+
+  if (!sender_id) throw new Error('Missing sender_id');
+  if (!process.env.ONFON_ACCESS_KEY)
+    throw new Error('Missing ONFON_ACCESS_KEY');
+
+  const batches = chunkArray(recipients, MAX_BATCH_SIZE);
+  const results: OnfonResult[] = [];
+
+  for (const batch of batches) {
+    try {
+      const res = await axios.post(
+        ONFON_ENDPOINT,
+        {
+          sender_name: sender_id,
+          message,
+          recipients: batch,
+        },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            accesskey: process.env.ONFON_ACCESS_KEY!,
+          },
+          timeout: 10_000,
+        },
+      );
+
+      const data = res.data;
+
+      if (data.status === 'success') {
+        results.push({
+          status: 'success',
+          message: data.message ?? 'Sent successfully',
+        });
+      } else {
+        const code = data.code ?? 'UNKNOWN';
+        results.push({
+          status: 'failed',
+          code,
+          message: data.message ?? 'Unknown Onfon error',
+          type: classifyOnfonError(code),
+        });
+      }
+    } catch (err: any) {
+      const code = err?.response?.data?.code ?? 'NETWORK_ERROR';
+      const message =
+        err?.response?.data?.message ??
+        err.message ??
+        'Failed to reach Onfon API';
+
+      results.push({
+        status: 'failed',
+        code,
+        message,
+        type: classifyOnfonError(code),
+      });
+    }
+  }
+
+  return results;
 }
 
 const smsWorker = new Worker(
@@ -83,34 +160,44 @@ const smsWorker = new Worker(
   async (job) => {
     const { user_id, to_number, cumulative, message, message_id } = job.data;
 
-    // 1. Check quota
-    const { data, error: fetchError } = await supabase
+    // 1. Check quota and senderID
+    const { data: user, error: fetchError } = await supabase
       .from('users')
-      .select('quota')
+      .select('quota, sender_id')
       .eq('id', user_id)
       .single();
 
-    if (fetchError || !data || data.quota < cumulative) {
+    if (user.quota < cumulative) {
       throw new Error(`INSUFFICIENT_QUOTA`);
+    }
+
+    if (fetchError || !user) {
+      throw new Error('User not found or fetch error');
+    }
+    if (!user.sender_id) {
+      throw new Error('Missing sender_id for user');
     }
 
     // 2. Deduct quota
     const { error: quotaError } = await supabase.rpc('deduct_quota_and_log', {
       uid: user_id,
       amount: cumulative,
+      reason: 'send-sms',
+      related_id: message_id,
     });
     if (quotaError) {
       throw new Error(`Quota deduction failed: ${quotaError.message}`);
     }
 
     // 3. Send SMS
-    const response = await withTimeout(
-      sendSmsViaOnfon(to_number, message),
-      10_000,
+    const [response] = await sendSmsViaOnfon(
+      to_number,
+      message,
+      user.sender_id,
     );
 
     if (response.status === 'failed') {
-      const type = classifyOnfonError(response.code);
+      const type = classifyOnfonError(response.code!);
 
       if (type === 'NON_RETRIABLE') {
         throw new UnrecoverableError(`NON_RETRIABLE:${response.code}`);
@@ -162,12 +249,14 @@ smsWorker.on('failed', async (job, err) => {
     const refundAmount = job.data.cumulative ?? 1; // fallback if missing
 
     console.log(
-      `💸 Refunding ${refundAmount} segment(s) for user ${job.data.user_id}`,
+      `Refunding ${refundAmount} segment(s) for user ${job.data.user_id}`,
     );
 
     await supabase.rpc('refund_quota_and_log', {
       uid: job.data.user_id,
       amount: refundAmount,
+      reason: 'retries_exhausted',
+      related_id: job.data.message_id,
     });
   }
 });

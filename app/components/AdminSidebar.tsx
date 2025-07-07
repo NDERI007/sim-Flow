@@ -11,8 +11,7 @@ import { useAuthStore } from '../lib/AuthStore';
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const user = useAuthStore((state) => state.user);
-  const displayName = user?.user_metadata?.name || 'Twin';
+  const userName = useAuthStore((state) => state.userName);
 
   const navItems = [
     { href: '/Reports', label: 'Delivery Reports' },
@@ -69,7 +68,7 @@ export default function AdminSidebar() {
         <div className="mb-6 flex items-center justify-between md:hidden">
           <div className="text-semibold mb-4 rounded-lg p-3 text-gray-200 shadow">
             Welcome back,{' '}
-            <span className="font-semibold text-white">{displayName}</span>!
+            <span className="font-semibold text-white">{userName}</span>!
           </div>
 
           <button onClick={() => setIsOpen(false)} aria-label="Close sidebar">
@@ -80,7 +79,7 @@ export default function AdminSidebar() {
         {/* Only show heading on md+ */}
         <div className="mb-6 hidden text-xl font-bold text-gray-200 md:block">
           Welcome back,{' '}
-          <span className="font-semibold text-white">{displayName}</span>!
+          <span className="font-semibold text-white">{userName}</span>!
         </div>
 
         <LogOutButton />

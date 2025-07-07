@@ -30,7 +30,7 @@ export async function middleware(req: NextRequest) {
   // It's recommended to let page components and API routes handle session retrieval.
   // The primary role of middleware here is to refresh the session token if it's expired.
   // We can achieve this by getting the user, which will perform the refresh if needed.
-  await supabase.auth.getUser();
+  await supabase.auth.getUser().catch(() => null);
 
   return response;
 }
