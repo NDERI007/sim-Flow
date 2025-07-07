@@ -192,20 +192,59 @@ const smsWorker = new Worker(
       throw new Error(`Quota deduction failed: ${quotaError.message}`);
     }
 
-    // 3. Send SMS
-    const [response] = await withTimeout(
-      sendSmsViaOnfon(to_number, message, user.sender_id),
-      10_000,
-    );
+    try {
+      const responses = await withTimeout(
+        sendSmsViaOnfon(to_number, message, user.sender_id),
+        15_000,
+      );
+      const response = responses[0];
 
-    if (response.status === 'failed') {
-      const type = classifyOnfonError(response.code!);
-
-      if (type === 'NON_RETRIABLE') {
-        throw new UnrecoverableError(`NON_RETRIABLE:${response.code}`);
+      if (response.status === 'failed') {
+        const type = classifyOnfonError(response.code!);
+        if (type === 'NON_RETRIABLE') {
+          throw new UnrecoverableError(`NON_RETRIABLE:${response.code}`);
+        }
+        throw new Error(`RETRIABLE:${response.code}`);
+      }
+    } catch (err: unknown) {
+      // Custom timeout error from withTimeout
+      if (err instanceof Error && err.message === 'TIMEOUT') {
+        console.warn('⏱️ Onfon request timed out (custom withTimeout wrapper)');
+        throw new Error('RETRIABLE:TIMEOUT');
       }
 
-      throw new Error(`RETRIABLE:${response.code}`);
+      // Axios error
+      if (axios.isAxiosError(err)) {
+        const code = err.response?.data?.code ?? 'NETWORK_ERROR';
+        const message =
+          err.response?.data?.message ??
+          err.message ??
+          'Axios error while calling Onfon';
+
+        console.error('📡 Axios error during Onfon request:', {
+          code,
+          message,
+          status: err.response?.status,
+          data: err.response?.data,
+        });
+
+        throw new Error(`RETRIABLE:${code}`);
+      }
+
+      // Fallback: unexpected error
+      if (err instanceof Error) {
+        console.error('❌ Unexpected error during SMS sending:', {
+          name: err.name,
+          message: err.message,
+          stack: err.stack,
+        });
+
+        throw new Error('RETRIABLE:UNKNOWN_ERROR');
+      }
+
+      // If it's not even an Error instance
+      console.error('❌ Unknown non-error thrown:', err);
+      throw new Error('RETRIABLE:UNKNOWN_THROWN');
     }
 
     // 4. Mark as sent
