@@ -1,0 +1,15 @@
+{
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/sms-worker.js"
+  },
+  "dependencies": {
+    "bullmq": "^4.0.0",
+    "ioredis": "^5.0.0",
+    "your-other-deps": "..."
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  }
+}
