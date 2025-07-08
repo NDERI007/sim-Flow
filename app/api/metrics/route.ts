@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
       .select('*', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .eq('status', 'sent')
-      .gte('created_at', todayUtcIso); // ✅ Compare against UTC-based DB
+      .gte('created_at', todayUtcIso); //
 
     if (sentTodayError) {
       console.error('🛑 SentToday fetch error:', sentTodayError);
@@ -65,7 +65,7 @@ export async function GET(req: NextRequest) {
     // ---------------- Count All failed
     const { count: failedCount, error: failedCountError } = await supabase
       .from('messages')
-      .select('*', { count: 'exact', head: true })
+      .select('id', { count: 'exact', head: true })
       .eq('user_id', user.id)
       .eq('status', 'failed');
 

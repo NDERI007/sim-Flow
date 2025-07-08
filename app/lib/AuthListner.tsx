@@ -1,15 +1,19 @@
-// app/lib/AuthInitializer.tsx
 'use client';
 
 import { useEffect } from 'react';
 import { useAuthStore } from './AuthStore';
 
-export function AuthInitializer() {
-  const getUser = useAuthStore((state) => state.getUser);
+export function AuthWrapper() {
+  const getUser = useAuthStore((s) => s.getUser);
+  const hydrated = useAuthStore((s) => s.hydrated);
 
+  // Trigger getUser once store is hydrated
   useEffect(() => {
-    getUser(); // only once on initial mount
-  }, [getUser]);
+    if (hydrated) {
+      getUser();
+    }
+    console.log('✅ AuthStore hydrated?', hydrated);
+  }, [hydrated, getUser]);
 
   return null;
 }

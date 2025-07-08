@@ -1,24 +1,21 @@
 import useSWR from 'swr';
 import axios from 'axios';
-import { useAuthStore } from './AuthStore';
-
-const fetcherWithToken = (url: string, token: string) =>
-  axios
-    .get(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    })
-    .then((res) => res.data);
+import { useFreshAccessToken } from './UseFResh';
 
 export function useMetrics() {
-  const accessToken = useAuthStore((state) => state.accessToken);
-
-  const shouldFetch = !!accessToken; // avoid firing without a token
+  const { token, isLoading: tokenLoading } = useFreshAccessToken();
+  const shouldFetch = token && !tokenLoading;
 
   const { data, error, isLoading, mutate } = useSWR(
-    shouldFetch ? ['/api/metrics', accessToken] : null,
-    ([url, token]) => fetcherWithToken(url, token),
+    shouldFetch ? ['/api/metrics', token] : null,
+    ([url, freshToken]) =>
+      axios
+        .get(url, {
+          headers: {
+            Authorization: `Bearer ${freshToken}`,
+          },
+        })
+        .then((res) => res.data),
     {
       revalidateOnFocus: false,
       refreshInterval: 0,

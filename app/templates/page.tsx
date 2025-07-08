@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import useSWR from 'swr';
 import {
   fetchTemplates,
@@ -8,9 +8,9 @@ import {
   updateTemplate,
   deleteTemplate,
 } from '../lib/templates';
-import { useAuthStore } from '../lib/AuthStore';
 import TemplateForm from '../components/template/templateForm';
 import TemplateCard from '../components/template/templateCard';
+import { useFreshAccessToken } from '../lib/UseFResh';
 
 type Template = {
   id: string;
@@ -19,25 +19,24 @@ type Template = {
 };
 
 export default function TemplatesPage() {
-  const accessToken = useAuthStore((s) => s.accessToken);
-  const stableTokenRef = useRef(accessToken);
+  const { token: accessToken, isLoading: tokenLoading } = useFreshAccessToken();
   const [loading, setLoading] = useState(false);
 
   const {
     data: templates = [],
     mutate,
-    isLoading,
+    isLoading: templatesLoading,
   } = useSWR(
-    stableTokenRef.current ? ['templates', stableTokenRef.current] : null,
-    () => fetchTemplates(stableTokenRef.current!),
+    accessToken ? ['templates', accessToken] : null,
+    ([, token]) => fetchTemplates(token),
     { revalidateOnFocus: false },
   );
 
   const handleCreate = async (name: string, content: string) => {
-    if (!stableTokenRef.current) return;
+    if (!accessToken) return;
     setLoading(true);
     try {
-      await createTemplate(stableTokenRef.current, { name, content });
+      await createTemplate(accessToken, { name, content });
       await mutate();
     } finally {
       setLoading(false);
@@ -45,10 +44,10 @@ export default function TemplatesPage() {
   };
 
   const handleUpdate = async (id: string, name: string, content: string) => {
-    if (!stableTokenRef.current) return;
+    if (!accessToken) return;
     setLoading(true);
     try {
-      await updateTemplate(stableTokenRef.current, id, { name, content });
+      await updateTemplate(accessToken, id, { name, content });
       await mutate();
     } finally {
       setLoading(false);
@@ -56,10 +55,10 @@ export default function TemplatesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!stableTokenRef.current) return;
+    if (!accessToken) return;
     setLoading(true);
     try {
-      await deleteTemplate(stableTokenRef.current, id);
+      await deleteTemplate(accessToken, id);
       await mutate();
     } finally {
       setLoading(false);
@@ -71,11 +70,9 @@ export default function TemplatesPage() {
       <h1 className="mb-6 text-2xl font-bold text-gray-400">Templates</h1>
 
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Reusable form */}
         <TemplateForm onCreate={handleCreate} loading={loading} />
 
-        {/* List of cards */}
-        {isLoading ? (
+        {tokenLoading || templatesLoading ? (
           <p className="col-span-full text-gray-400">Loading templates...</p>
         ) : (
           templates.map((template: Template) => (

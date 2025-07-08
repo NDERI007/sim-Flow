@@ -60,12 +60,21 @@ export default function SmsForm() {
     setFeedback('');
 
     try {
-      const res = await axios.post('/api/send-sms', {
-        to_number: manualList,
-        message,
-        scheduledAt: scheduledAt || null,
-        contact_group_ids: contactGroupIDs.length > 0 ? contactGroupIDs : null,
-      });
+      const res = await axios.post(
+        '/api/send-sms',
+        {
+          to_number: manualList,
+          message,
+          scheduledAt: scheduledAt || null,
+          contact_group_ids:
+            contactGroupIDs.length > 0 ? contactGroupIDs : null,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
 
       if (res.status !== 200) {
         throw new Error(res.data?.error || 'Failed to send SMS');

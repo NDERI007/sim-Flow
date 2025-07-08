@@ -1,44 +1,23 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
-import { Queue } from 'bullmq';
 import Redis from 'ioredis';
-import { PostgrestError } from '@supabase/supabase-js';
 import { prepareRecipients } from '../../lib/prepareRE/receipients';
+import { FlowProducer } from 'bullmq';
+import { getSupabaseClientFromRequest } from '../../lib/supabase-server/server';
 
 // Redis & BullMQ
 const connection = new Redis(process.env.REDIS_URL!, {
   tls: {},
   maxRetriesPerRequest: null,
 });
-const smsQueue = new Queue('smsQueue', { connection });
+const flowProducer = new FlowProducer({ connection });
 
-type GroupContact = {
-  contact: {
-    id: string;
-    phone: string;
-  } | null;
-  group_id: string;
-};
+// Define the batch size for SMS jobs
+const BATCH_SIZE = 500;
 
 export async function POST(req: NextRequest) {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        cookies: {
-          getAll: () => req.cookies.getAll(),
-          setAll: () => {},
-        },
-      },
-    );
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
+    const { supabase, user, error } = await getSupabaseClientFromRequest(req);
+    if (error || !user || !supabase) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -69,48 +48,36 @@ export async function POST(req: NextRequest) {
       delay = scheduledTime.getTime() - Date.now();
     }
 
-    // Fetch group contacts from Supabase
     let groupContacts: { id: string; phone: string; group_id: string }[] = [];
 
     if (Array.isArray(contact_group_ids) && contact_group_ids.length > 0) {
-      const { data, error } = (await supabase
-        .from('contact_group_members')
-        .select(
-          `
-          group_id,
-          contact:contacts (
-            id,
-            phone
-          )
-        `,
-        )
-        .in('group_id', contact_group_ids)) as unknown as {
-        data: GroupContact[];
-        error: PostgrestError | null;
-      };
+      const { data, error } = await supabase.rpc('get_contacts_by_group_ids', {
+        group_ids: contact_group_ids,
+      });
+      console.log('Raw rpc', data);
+      console.log('raw rpc error if any', error);
 
       if (error) {
         return NextResponse.json(
-          { message: 'Failed to fetch contacts' },
+          { message: 'Failed to fetch group contacts', error: error.message },
           { status: 500 },
         );
       }
 
-      groupContacts = (data ?? [])
-        .filter((row) => row.contact?.id && row.contact?.phone && row.group_id)
-        .map((row) => ({
-          id: row.contact!.id,
-          phone: row.contact!.phone,
-          group_id: row.group_id,
-        }));
+      groupContacts = (data ?? []).map((row) => ({
+        id: row.contact_id,
+        phone: row.phone,
+        group_id: row.group_id,
+      }));
     }
 
-    const { allPhones, totalRecipients, totalSegments } = prepareRecipients({
-      manualNumbers: to_number,
-      groupContacts,
-      message,
-      devMode: true,
-    });
+    const { allPhones, totalRecipients, totalSegments, segmentsPerMessage } =
+      prepareRecipients({
+        manualNumbers: to_number,
+        groupContacts,
+        message,
+        devMode: true,
+      });
 
     if (totalRecipients === 0) {
       return NextResponse.json(
@@ -119,67 +86,98 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { data: messageRow, error: insertError } = await supabase
-      .from('messages')
-      .insert([
-        {
-          user_id: user.id,
-          message,
-          status: scheduledAt ? 'scheduled' : 'queued',
-          scheduled_at: scheduledAt
-            ? new Date(scheduledAt).toISOString()
-            : null,
-        },
-      ])
-      .select()
-      .single();
+    const groupContactsPayload = groupContacts.map(({ id, group_id }) => ({
+      contact_id: id,
+      group_id,
+    }));
 
-    if (insertError || !messageRow) {
+    console.log('📝 Sending to RPC:', {
+      user_id: user.id,
+      message,
+      status: scheduledAt ? 'scheduled' : 'queued',
+      scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : null,
+      group_contacts_payload: groupContactsPayload,
+    });
+
+    const { data: messageRows, error: rpcError } = await supabase.rpc(
+      'insert_message_with_contacts',
+      {
+        p_user_id: user.id,
+        p_message: message,
+        p_status: scheduledAt ? 'scheduled' : 'queued',
+        p_scheduled_at: scheduledAt
+          ? new Date(scheduledAt).toISOString()
+          : null,
+        p_group_contacts: groupContactsPayload,
+      },
+    );
+    console.log('📬 RPC Result:', messageRows);
+    console.log('❌ RPC Error:', rpcError);
+
+    const messageRow = messageRows?.[0];
+
+    if (rpcError || !messageRow) {
       return NextResponse.json(
-        { message: 'Failed to insert message', error: insertError?.message },
+        {
+          message: 'Failed to save message and contacts',
+          error: rpcError?.message,
+        },
         { status: 500 },
       );
     }
 
-    // Link group contacts (if any) via join table
-    if (groupContacts.length > 0) {
-      const { error: joinError } = await supabase
-        .from('message_contacts')
-        .insert(
-          groupContacts.map(({ id, group_id }) => ({
-            message_id: messageRow.id,
-            contact_id: id,
-            group_id,
-          })),
-        );
-
-      if (joinError) {
-        return NextResponse.json(
-          { message: 'Failed to link contacts', error: joinError?.message },
-          { status: 500 },
-        );
-      }
+    // Create batches of phone numbers
+    const phoneBatches = [];
+    for (let i = 0; i < allPhones.length; i += BATCH_SIZE) {
+      phoneBatches.push(allPhones.slice(i, i + BATCH_SIZE));
     }
 
-    //Queue for sending
-    await smsQueue.add(
-      'send_sms',
-      {
-        message_id: messageRow.id,
-        user_id: user.id,
-        message,
-        to_number: allPhones,
-        cumulative: totalSegments,
-        metadata: { source: 'dashboard', scheduled: Boolean(scheduledAt) },
-      },
-      {
-        delay,
-        attempts: 3,
-        backoff: { type: 'exponential', delay: 5000 },
-        removeOnComplete: true,
-        removeOnFail: false,
-      },
-    );
+    // Create a job for each batch
+    if (phoneBatches.length > 0) {
+      // Build parent + child jobs using FlowProducer
+      await flowProducer.add({
+        name: `send_sms_flow_${messageRow.id}`,
+        queueName: 'smsQueue',
+        data: {
+          message_id: messageRow.id,
+          user_id: user.id,
+          totalRecipients,
+          provider: 'onfon',
+          metadata: {
+            source: 'dashboard',
+            scheduled: Boolean(scheduledAt),
+          },
+        },
+        opts: {
+          delay, // handles scheduled SMS
+          attempts: 1,
+          removeOnComplete: true,
+        },
+        children: phoneBatches.map((batch, i) => ({
+          name: 'send_sms_batch',
+          queueName: 'smsQueue',
+          data: {
+            message_id: messageRow.id,
+            user_id: user.id,
+            message,
+            to_number: batch,
+            segmentsPerMessage,
+            provider: 'onfon',
+            metadata: {
+              source: 'dashboard',
+              batchIndex: i,
+            },
+          },
+          opts: {
+            delay: i * 1000, // Optional: stagger batches 1s apart
+            attempts: 3,
+            backoff: { type: 'exponential', delay: 5000 },
+            removeOnComplete: true,
+            removeOnFail: false,
+          },
+        })),
+      });
+    }
 
     return NextResponse.json({
       success: true,

@@ -41,6 +41,10 @@ type OnfonResult = {
   message: string;
   type?: 'RETRIABLE' | 'NON_RETRIABLE' | 'UNKNOWN';
 };
+type SmsSendSummary = {
+  success: boolean;
+  results: OnfonResult[];
+};
 
 function classifyOnfonError(code: string): OnfonResult['type'] {
   const RETRIABLE = new Set(['006', '033', '034']);
@@ -121,7 +125,7 @@ export async function sendSmsViaOnfon(
   to: string | string[],
   message: string,
   sender_id: string,
-): Promise<OnfonResult[]> {
+): Promise<SmsSendSummary[]> {
   const recipients = typeof to === 'string' ? [to] : to;
 
   const apiKey = process.env.ONFON_ACCESS_KEY;
@@ -153,19 +157,20 @@ export async function sendSmsViaOnfon(
         timeout: 10_000,
       });
 
-      const data = response.data;
+      const onfondata = response.data;
 
-      if (isSuccessfulOnfonResponse(data)) {
+      if (isSuccessfulOnfonResponse(onfondata)) {
         results.push({
           status: 'success',
-          message: data.message ?? 'Sent successfully',
+          message: onfondata.message ?? 'Sent successfully',
+          code: onfondata.code,
         });
       } else {
-        const code = data.code ?? 'UNKNOWN';
+        const code = onfondata.code ?? 'UNKNOWN';
         results.push({
           status: 'failed',
           code,
-          message: data.message ?? 'Unknown error',
+          message: onfondata.message ?? 'Unknown error',
           type: classifyOnfonError(code),
         });
       }
@@ -174,7 +179,8 @@ export async function sendSmsViaOnfon(
     }
   }
 
-  return results;
+  const success = results.every((r) => r.status === 'success');
+  return { success, results };
 }
 
 const smsWorker = new Worker(
@@ -182,96 +188,47 @@ const smsWorker = new Worker(
   async (job) => {
     const { user_id, to_number, cumulative, message, message_id } = job.data;
 
-    // 1. Check quota and senderID
+    // 1. Fetch sender and quota
     const { data: user, error: fetchError } = await supabase
       .from('users')
       .select('quota, sender_id')
       .eq('id', user_id)
       .single();
-    if (!user) {
-      throw new Error('USER_NOT_FOUND');
-    }
 
-    if (user.quota < cumulative) {
-      throw new Error(`INSUFFICIENT_QUOTA`);
-    }
+    if (!user || fetchError) throw new Error('USER_NOT_FOUND');
+    if (!user.sender_id) throw new Error('Missing sender_id for user');
+    if (user.quota < cumulative) throw new Error('INSUFFICIENT_QUOTA');
 
-    if (fetchError || !user) {
-      throw new Error('User not found or fetch error');
-    }
-    if (!user.sender_id) {
-      throw new Error('Missing sender_id for user');
-    }
-
-    // 2. Deduct quota
+    // 2. Deduct quota only once
     if (job.attemptsMade === 0) {
       const { error: quotaError } = await supabase.rpc('deduct_quota_and_log', {
         uid: user_id,
         amount: cumulative,
         reason: 'send-sms',
-        related_id: message_id,
+        related_msg_id: message_id,
       });
-      if (quotaError) {
+      if (quotaError)
         throw new Error(`Quota deduction failed: ${quotaError.message}`);
-      }
     }
 
-    try {
-      const responses = await withTimeout(
-        sendSmsViaOnfon(to_number, message, user.sender_id),
-        15_000,
-      );
-      const response = responses[0];
+    // 3. Send SMS
+    const { success, results } = await withTimeout(
+      sendSmsViaOnfon(to_number, message, user.sender_id),
+      15_000,
+    );
 
-      if (response.status === 'failed') {
-        const type = classifyOnfonError(response.code!);
-        if (type === 'NON_RETRIABLE') {
-          throw new UnrecoverableError(`NON_RETRIABLE:${response.code}`);
-        }
-        throw new Error(`RETRIABLE:${response.code}`);
-      }
-    } catch (err: unknown) {
-      // Custom timeout error from withTimeout
-      if (err instanceof Error && err.message === 'TIMEOUT') {
-        console.warn('⏱️ Onfon request timed out (custom withTimeout wrapper)');
-        throw new Error('RETRIABLE:TIMEOUT');
+    if (!success) {
+      const failed = results.find((r) => r.status === 'failed')!;
+      const type = failed.type ?? classifyOnfonError(failed.code ?? 'UNKNOWN');
+
+      if (type === 'NON_RETRIABLE') {
+        throw new UnrecoverableError(`NON_RETRIABLE:${failed.code}`);
       }
 
-      // Axios error
-      if (axios.isAxiosError(err)) {
-        const code = err.response?.data?.code ?? 'NETWORK_ERROR';
-        const message =
-          err.response?.data?.message ??
-          err.message ??
-          'Axios error while calling Onfon';
-
-        console.error('📡 Axios error during Onfon request:', {
-          code,
-          message,
-          status: err.response?.status,
-          data: err.response?.data,
-        });
-
-        throw new Error(`RETRIABLE:${code}`);
-      }
-
-      // Fallback: unexpected error
-      if (err instanceof Error) {
-        console.error('❌ Unexpected error during SMS sending:', {
-          name: err.name,
-          message: err.message,
-          stack: err.stack,
-        });
-
-        throw new Error('RETRIABLE:UNKNOWN_ERROR');
-      }
-
-      // If it's not even an Error instance
-      console.error('❌ Unknown non-error thrown:', err);
-      throw new Error('RETRIABLE:UNKNOWN_THROWN');
+      throw new Error(`RETRIABLE:${failed.code}`);
     }
 
-    // 4. Mark as sent
+    // 4. Mark message as sent
     const eatNow = DateTime.now().setZone('Africa/Nairobi').toISO();
     await supabase
       .from('messages')
@@ -281,10 +238,7 @@ const smsWorker = new Worker(
 
     return { success: true, cumulative };
   },
-  {
-    connection,
-    concurrency: 5,
-  },
+  { connection, concurrency: 5 },
 );
 
 // Success

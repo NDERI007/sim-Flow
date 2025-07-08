@@ -3,7 +3,7 @@ import './globals.css';
 import { Inter } from 'next/font/google';
 import CompanyHeader from './components/companyHeader';
 import { usePathname } from 'next/navigation';
-import { AuthInitializer } from './lib/AuthListner';
+import { AuthWrapper } from './lib/AuthListner';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -33,7 +33,7 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.className} bg-white text-gray-900`}>
         {showHeader && <CompanyHeader />}
-        <AuthInitializer />
+        <AuthWrapper />
         {children}
       </body>
     </html>
