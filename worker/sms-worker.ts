@@ -75,6 +75,9 @@ function classifyOnfonError(code: string): OnfonResult['type'] {
   if (NON_RETRIABLE.has(code)) return 'NON_RETRIABLE';
   return 'UNKNOWN';
 }
+function isSuccessfulOnfonResponse(data: any): boolean {
+  return data?.code === '000';
+}
 
 function chunkArray<T>(arr: T[], size: number): T[][] {
   const result: T[][] = [];
@@ -152,7 +155,7 @@ export async function sendSmsViaOnfon(
 
       const data = response.data;
 
-      if (data.status === 'success') {
+      if (isSuccessfulOnfonResponse(data)) {
         results.push({
           status: 'success',
           message: data.message ?? 'Sent successfully',
@@ -201,14 +204,16 @@ const smsWorker = new Worker(
     }
 
     // 2. Deduct quota
-    const { error: quotaError } = await supabase.rpc('deduct_quota_and_log', {
-      uid: user_id,
-      amount: cumulative,
-      reason: 'send-sms',
-      related_id: message_id,
-    });
-    if (quotaError) {
-      throw new Error(`Quota deduction failed: ${quotaError.message}`);
+    if (job.attemptsMade === 0) {
+      const { error: quotaError } = await supabase.rpc('deduct_quota_and_log', {
+        uid: user_id,
+        amount: cumulative,
+        reason: 'send-sms',
+        related_id: message_id,
+      });
+      if (quotaError) {
+        throw new Error(`Quota deduction failed: ${quotaError.message}`);
+      }
     }
 
     try {
@@ -271,7 +276,8 @@ const smsWorker = new Worker(
     await supabase
       .from('messages')
       .update({ status: 'sent', sent_at: eatNow })
-      .eq('id', message_id);
+      .eq('id', message_id)
+      .eq('status', ['queued', 'scheduled']);
 
     return { success: true, cumulative };
   },
