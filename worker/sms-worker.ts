@@ -7,7 +7,10 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-const redis = new Redis(process.env.REDIS_URL!, { tls: {} });
+const redis = new Redis(process.env.REDIS_URL!, {
+  tls: {},
+  maxRetriesPerRequest: null,
+});
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
