@@ -3,7 +3,7 @@ import Redis from 'ioredis';
 import { createClient } from '@supabase/supabase-js';
 import { DateTime } from 'luxon';
 import dotenv from 'dotenv';
-import { sendSmsOnfon } from './lib/onfon';
+import { sendSmsOnfon } from './lib/onfon.js';
 
 dotenv.config();
 
