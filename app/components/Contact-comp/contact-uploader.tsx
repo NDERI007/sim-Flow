@@ -1,30 +1,27 @@
-'use client';
-
-import { useState } from 'react';
 import Papa from 'papaparse';
 import ExcelJS from 'exceljs';
-import { useAuthStore } from '../../lib/AuthStore';
-import { supabase } from '../../lib/supabase';
-import { mutate } from 'swr';
 
-interface Contact {
+import { useState } from 'react';
+import { supabase } from '../../lib/supabase';
+import { validateAndFormatKenyanNumber } from '../../lib/validator/phoneN';
+import { useAuthStore } from '../../lib/AuthStore';
+
+type Contact = {
   name: string;
   phone: string;
-}
-interface ContactUploaderProps {
-  onComplete?: () => void;
-}
+};
 
-export default function ContactUploader({ onComplete }: ContactUploaderProps) {
-  const { user } = useAuthStore();
-  const userId = user?.id;
+const BATCH_SIZE = 500;
+
+export default function Uploader({ onComplete }: { onComplete?: () => void }) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [duplicates, setDuplicates] = useState<Contact[]>([]);
   const [groupName, setGroupName] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
-  const BATCH_SIZE = 100;
+  const user = useAuthStore((s) => s.user);
+  const userId = user?.id;
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -42,7 +39,7 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
         });
         parsedContacts = parsed.data.map((row: Contact) => ({
           name: String(row.name || '').trim(),
-          phone: normalizePhone(String(row.phone || '').trim()),
+          phone: String(row.phone || '').trim(),
         }));
       } else if (ext === 'xlsx' || ext === 'xls') {
         parsedContacts = await parseExcel(file);
@@ -52,7 +49,15 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
         );
       }
 
-      parsedContacts = parsedContacts.filter((c) => /^07\d{8}$/.test(c.phone));
+      // Use wrapper to validate and format
+      const phoneMap = tryValidateWithInvalids(
+        parsedContacts.map((c) => c.phone),
+      );
+      parsedContacts = parsedContacts
+        .map((c, i) =>
+          phoneMap.valid[i] ? { name: c.name, phone: phoneMap.valid[i] } : null,
+        )
+        .filter(Boolean) as Contact[];
 
       const { deduped, duplicates } = dedupeContacts(parsedContacts);
 
@@ -125,16 +130,15 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
       setContacts([]);
       setDuplicates([]);
       setGroupName('');
-      await mutate('rpc:contacts-with-groups');
       onComplete?.();
     } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message || 'Something went wrong');
-      } else if (typeof err === 'object' && err !== null && 'message' in err) {
-        setError(String((err as { message: unknown }).message));
-      } else {
-        setError('Something went wrong');
-      }
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'object' && err !== null && 'message' in err
+            ? String((err as { message: unknown }).message)
+            : 'Something went wrong';
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -165,7 +169,7 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
         type="text"
         value={groupName}
         onChange={(e) => setGroupName(e.target.value)}
-        placeholder="e.g.Hi cousins"
+        placeholder="e.g. Hi cousins"
         className="mb-4 w-full rounded bg-slate-800 px-3 py-2 text-sm text-gray-100 placeholder:text-gray-500 focus:outline-none"
       />
 
@@ -218,13 +222,26 @@ export default function ContactUploader({ onComplete }: ContactUploaderProps) {
   );
 }
 
-//Helper func
+// Helpers
 
-function normalizePhone(phone: string) {
-  phone = phone.replace(/\s|-/g, '');
-  if (phone.startsWith('+254')) return '0' + phone.slice(4);
-  if (phone.startsWith('254')) return '0' + phone.slice(3);
-  return phone;
+function tryValidateWithInvalids(inputs: string[]): {
+  valid: (string | null)[];
+  invalid: string[];
+} {
+  const valid: (string | null)[] = [];
+  const invalid: string[] = [];
+
+  for (const raw of inputs) {
+    try {
+      const res = validateAndFormatKenyanNumber([raw]);
+      valid.push(res[0]);
+    } catch {
+      valid.push(null);
+      invalid.push(raw);
+    }
+  }
+
+  return { valid, invalid };
 }
 
 function dedupeContacts(contacts: Contact[]) {
@@ -249,24 +266,14 @@ async function parseExcel(file: File): Promise<Contact[]> {
   const buffer = await file.arrayBuffer();
   await workbook.xlsx.load(buffer);
 
-  if (workbook.worksheets.length !== 1) {
-    throw new Error('Please upload an Excel file with a single sheet.');
-  }
-
   const sheet = workbook.worksheets[0];
   const contacts: Contact[] = [];
 
-  if (sheet.actualRowCount < 2) {
-    throw new Error('The sheet appears to be empty or missing headers.');
-  }
-
-  sheet.eachRow((row, index) => {
-    if (index === 1) return; // skip header
+  sheet.eachRow((row, i) => {
+    if (i === 1) return;
     const name = row.getCell(1).value?.toString().trim() || '';
-    const phone = normalizePhone(row.getCell(2).value?.toString().trim() || '');
-    if (name && /^07\d{8}$/.test(phone)) {
-      contacts.push({ name, phone });
-    }
+    const phone = row.getCell(2).value?.toString().trim() || '';
+    if (name && phone) contacts.push({ name, phone });
   });
 
   return contacts;

@@ -1,168 +1,64 @@
-import { Worker, UnrecoverableError, Job } from 'bullmq';
+import { Worker, UnrecoverableError } from 'bullmq';
 import Redis from 'ioredis';
 import { createClient } from '@supabase/supabase-js';
 import { DateTime } from 'luxon';
-import axios from 'axios';
 import dotenv from 'dotenv';
+import { sendSmsOnfon } from './lib/onfon';
 
 dotenv.config();
 
+// Redis & Supabase setup
 const redis = new Redis(process.env.REDIS_URL!, {
   tls: {},
   maxRetriesPerRequest: null,
 });
+redis.ping().then(console.log).catch(console.error);
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
 
-type ParsedError = {
-  message: string;
-  code: string;
-  type: 'RETRIABLE' | 'NON_RETRIABLE' | 'UNKNOWN';
-};
-
-const classifyError = (code: string): ParsedError['type'] => {
-  const nonRetriable = new Set([
-    '007',
-    '008',
-    '009',
-    '010',
-    '011',
-    '013',
-    '015',
-    '019',
-    '020',
-    '021',
-    '023',
-    '024',
-    '028',
-    '029',
-    '030',
-    '031',
-    '039',
-    '042',
-    '801',
-    '803',
-    '804',
-    '805',
-    '807',
-    '808',
-    '809',
-  ]);
-
-  const retriable = new Set(['006', '033', '034']);
-
-  if (retriable.has(code)) return 'RETRIABLE';
-  if (nonRetriable.has(code)) return 'NON_RETRIABLE';
-  return 'UNKNOWN';
-};
-
-const parseError = (err: unknown): ParsedError => {
-  if (err instanceof Error && err.message === 'TIMEOUT') {
-    return { message: 'Timeout', code: 'TIMEOUT', type: 'RETRIABLE' };
-  }
-
-  if (axios.isAxiosError(err)) {
-    const code = err.response?.data?.code ?? 'AXIOS_ERR';
-    const message =
-      err.response?.data?.message ?? err.message ?? 'Unknown Axios error';
-
-    return {
-      code,
-      message,
-      type: classifyError(code),
-    };
-  }
-
-  if (typeof err === 'object' && err !== null) {
-    const maybeErr = err as { code?: string; message?: string };
-    const code = maybeErr.code ?? 'UNKNOWN';
-    const message = maybeErr.message ?? 'Unknown structured error';
-    return {
-      code,
-      message,
-      type: classifyError(code),
-    };
-  }
-
-  return {
-    code: 'UNKNOWN',
-    message: String(err),
-    type: 'UNKNOWN',
-  };
-};
-
-// -- Send SMS --
-async function sendSmsOnfon(to: string[], message: string, sender_id: string) {
-  const ONFON_ENDPOINT = 'https://api.onfonmedia.co.ke/v1/sms/SendBulkSMS';
-  const payload = {
-    SenderId: sender_id,
-    ApiKey: process.env.ONFON_ACCESS_KEY,
-    ClientId: process.env.ONFON_CLIENT_ID,
-    MessageParameters: to.map((n) => ({ Number: n, Text: message })),
-  };
-
-  try {
-    const res = await axios.post(ONFON_ENDPOINT, payload, {
-      timeout: 10000,
-      headers: { 'Content-Type': 'application/json' },
-    });
-
-    const recipients = res.data?.recipients;
-    if (!recipients || !Array.isArray(recipients)) {
-      throw new Error('Malformed Onfon response');
-    }
-
-    return recipients.map((r: any) => ({
-      phone: r.Number,
-      status: r.Code === '000' ? 'success' : 'failed',
-      code: r.Code,
-      message: r.Message || 'No message',
-      type: classifyError(r.Code),
-    }));
-  } catch (err) {
-    const parsed = parseError(err);
-    return to.map((phone) => ({
-      phone,
-      status: 'failed',
-      code: parsed.code,
-      message: parsed.message,
-      type: parsed.type,
-    }));
-  }
-}
-
-// -- Worker Logic --
+// Worker logic
 export const smsWorker = new Worker(
   'smsQueue',
   async (job) => {
-    const {
-      message_id,
-      message,
-      to_number,
-      contact_map,
-      segmentsPerMessage,
-      user_id,
-    } = job.data;
+    if (job.name.startsWith('send_sms_flow_') || !job.data?.to_number) {
+      return; // Skip parent
+    }
 
-    // Get sender ID
-    const { data: user, error: userErr } = await supabase
-      .from('users')
-      .select('sender_id')
-      .eq('id', user_id)
+    const { message_id, message, to_number, contact_map } = job.data;
+
+    // Fetch sender_id via messages → users join
+    // Get message and user_id
+    const { data: messageRow, error: messageError } = await supabase
+      .from('messages')
+      .select('user_id')
+      .eq('id', message_id)
       .single();
 
-    if (!user || !user.sender_id || userErr)
-      throw new Error('MISSING_SENDER_ID');
+    if (messageError || !messageRow) throw new Error('MISSING_MESSAGE_USER');
 
-    const results = await sendSmsOnfon(to_number, message, user.sender_id);
+    // Then get sender_id
+    const { data: userRow, error: userError } = await supabase
+      .from('users')
+      .select('sender_id')
+      .eq('id', messageRow.user_id)
+      .single();
 
-    // Prepare inserts for message_contacts
+    if (userError || !userRow?.sender_id) throw new Error('MISSING_SENDER_ID');
+
+    const sender_id = userRow.sender_id;
+
+    // Simulated sending
+    const results = await sendSmsOnfon(to_number, message, sender_id);
+
+    // Upsert into message_contacts
     const inserts = results.map((res) => ({
       message_id,
       contact_id: contact_map[res.phone],
       status: res.status,
+
       error: res.status === 'failed' ? res.message : null,
     }));
 
@@ -171,6 +67,7 @@ export const smsWorker = new Worker(
       .upsert(inserts, { onConflict: 'message_id,contact_id' });
 
     if (insertError) {
+      console.error('❌ Failed to upsert message_contacts:', insertError);
       throw new Error('FAILED_DB_INSERT');
     }
 
@@ -182,24 +79,12 @@ export const smsWorker = new Worker(
       );
       const allFailed = results.every((r) => r.status === 'failed');
 
-      if (allFailed && hasNonRetriable) {
-        // All recipients failed and at least one was non-retriable
+      if (allFailed && hasNonRetriable)
         throw new UnrecoverableError(`NON_RETRIABLE_ALL`);
-      }
-
-      if (allFailed) {
-        // All failed but may be retriable
-        throw new Error(`RETRIABLE_ALL`);
-      }
-
-      // Partial failure — success + failure mixed.
-      // We can choose to:
-      // - not throw (consider job complete)
-      // - or mark as partial for manual review
-      // For now, we’ll continue.
+      if (allFailed) throw new Error(`RETRIABLE_ALL`);
     }
 
-    // Update parent if all succeeded
+    // Mark parent message as sent
     await supabase
       .from('messages')
       .update({
@@ -207,39 +92,7 @@ export const smsWorker = new Worker(
         sent_at: DateTime.now().setZone('Africa/Nairobi').toISO(),
       })
       .eq('id', message_id)
-      .eq('status', 'queued');
-
-    // Update parent if all succeeded
-    await supabase
-      .from('messages')
-      .update({
-        status: 'sent',
-        sent_at: DateTime.now().setZone('Africa/Nairobi').toISO(),
-      })
-      .eq('id', message_id)
-      .eq('status', ['queued', 'scheduled']);
-
-    const quotaToDeduct = to_number.length * segmentsPerMessage;
-
-    //  Deduct quota once (safe via RPC)
-    const { error: quotaError } = await supabase.rpc('deduct_quota_and_log', {
-      uid: user_id,
-      amount: quotaToDeduct, // 1 per recipient
-      reason: 'send_sms',
-      related_msg_id: message_id,
-    });
-
-    if (quotaError) {
-      console.warn(
-        'Quota not deducted. Check if already done or insufficient:',
-        {
-          user_id,
-          message_id,
-          count: to_number.length,
-          error: quotaError.message,
-        },
-      );
-    }
+      .in('status', ['queued', 'scheduled']);
 
     return { ok: true };
   },
@@ -249,7 +102,7 @@ export const smsWorker = new Worker(
   },
 );
 
-// -- Events --
+// Worker Events
 smsWorker.on('completed', (job) => {
   console.log(`✅ Job ${job.id} completed:`, job.data.message_id);
 });
@@ -262,10 +115,20 @@ smsWorker.on('failed', async (job, err) => {
   const isRetriable =
     err.message.startsWith('RETRIABLE') || err.message === 'TIMEOUT';
   const finalTry = job.attemptsMade + 1 >= (job.opts.attempts || 1);
+
   const to_number = job.data.to_number;
   const segments = job.data.segmentsPerMessage || 1;
   const refundAmount = to_number.length * segments;
-  // Mark parent message as failed if it's a final unretriable failure
+
+  // Always fetch user_id from messages
+  const { data: msgData, error: msgErr } = await supabase
+    .from('messages')
+    .select('user_id')
+    .eq('id', job.data.message_id)
+    .single();
+
+  const user_id = msgData?.user_id;
+
   if (!isRetriable || finalTry) {
     await supabase
       .from('messages')
@@ -277,8 +140,7 @@ smsWorker.on('failed', async (job, err) => {
       .eq('id', job.data.message_id);
   }
 
-  // 🔁 Refund quota only for failed recipients (after all retries)
-  if (finalTry) {
+  if (finalTry && user_id) {
     const { data: failedContacts, error: fetchFailedError } = await supabase
       .from('message_contacts')
       .select('contact_id')
@@ -287,7 +149,7 @@ smsWorker.on('failed', async (job, err) => {
 
     if (fetchFailedError) {
       console.error(
-        '❌ Could not count failed recipients for quota refund:',
+        '❌ Could not fetch failed recipients:',
         fetchFailedError.message,
       );
       return;
@@ -299,7 +161,7 @@ smsWorker.on('failed', async (job, err) => {
       const { error: refundError } = await supabase.rpc(
         'refund_quota_and_log',
         {
-          uid: job.data.user_id,
+          uid: user_id,
           amount: refundAmount,
           reason: 'retries_exhausted',
           related_id: job.data.message_id,
@@ -307,10 +169,12 @@ smsWorker.on('failed', async (job, err) => {
       );
 
       if (refundError) {
-        console.error('⚠️ Failed to refund quota:', refundError.message);
+        console.error('⚠️ Quota refund failed:', refundError.message);
       } else {
         console.log(`💰 Refunded quota for ${failedCount} failed recipients.`);
       }
     }
   }
 });
+
+console.log('📡 SMS Worker is running...');

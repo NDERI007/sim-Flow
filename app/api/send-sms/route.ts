@@ -57,16 +57,14 @@ export async function POST(req: NextRequest) {
       message,
       scheduledAt,
       contact_group_ids = [],
-      testmode,
     } = body;
 
-    console.log('📨 Incoming send-sms request:', {
+    console.log('Incoming send-sms request:', {
       user: user.id,
       to_number,
       message,
       scheduledAt,
       contact_group_ids,
-      testmode,
     });
 
     if (typeof message !== 'string' || message.trim().length === 0) {
@@ -188,13 +186,13 @@ export async function POST(req: NextRequest) {
           data: {
             message_id: messageRow.id,
             totalRecipients,
-            provider: 'onfon',
             metadata: {
               source: 'dashboard',
               scheduled: Boolean(scheduledAt),
             },
           },
           opts: {
+            jobId: `flow-${messageRow.id}`,
             delay,
             attempts: 1,
             removeOnComplete: true,
@@ -208,13 +206,13 @@ export async function POST(req: NextRequest) {
               to_number: batch,
               contact_map,
               segmentsPerMessage,
-              provider: 'onfon',
               metadata: {
                 source: 'dashboard',
                 batchIndex: i,
               },
             },
             opts: {
+              jobId: `sms-${messageRow.id}-batch-${i}`,
               delay: i * 1000,
               attempts: 1,
               backoff: { type: 'exponential', delay: 5000 },
@@ -223,6 +221,24 @@ export async function POST(req: NextRequest) {
             },
           })),
         });
+        const { error: quotaError } = await supabase.rpc(
+          'deduct_quota_and_log',
+          {
+            p_uid: user.id,
+            p_amount: totalSegments, // total across all batches
+            p_reason: 'send_sms',
+            p_related_msg_id: messageRow.id,
+          },
+        );
+
+        if (quotaError) {
+          console.warn('Quota not deducted:', {
+            user_id: user.id,
+            message_id: messageRow.id,
+            error: quotaError.message,
+          });
+        }
+
         console.log('✅ Flow added to BullMQ:', {
           batches: phoneBatches.length,
           delay,

@@ -35,11 +35,13 @@ export function prepareRecipients({
     dev: devMode,
   });
 
-  const groupPhones = groupContacts
-    .filter((c) => c.phone && /^07\d{8}$/.test(c.phone))
-    .map((c) => c.phone.trim());
+  const groupPhonesRaw = groupContacts.map((c) => c.phone.trim());
 
-  const merged = [...formattedManual, ...groupPhones];
+  const formattedGroup = validateAndFormatKenyanNumber(groupPhonesRaw, {
+    dev: devMode,
+  });
+
+  const merged = [...formattedManual, ...formattedGroup];
   const deduped = Array.from(new Set(merged));
 
   const segmentsPerMessage = calculateSmsSegments(message);
@@ -52,7 +54,7 @@ export function prepareRecipients({
     totalSegments,
     debug: {
       manualCount: formattedManual.length,
-      groupCount: groupPhones.length,
+      groupCount: formattedGroup.length,
     },
   };
 }

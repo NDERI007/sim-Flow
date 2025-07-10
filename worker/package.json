@@ -7,7 +7,7 @@
   "dependencies": {
     "bullmq": "^4.0.0",
     "ioredis": "^5.0.0",
-    "your-other-deps": "..."
+    "axios": "^1.10.0"
   },
   "devDependencies": {
     "typescript": "^5.0.0"

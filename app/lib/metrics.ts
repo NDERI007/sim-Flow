@@ -1,10 +1,11 @@
 import useSWR from 'swr';
 import axios from 'axios';
-import { useFreshAccessToken } from './UseFResh';
+import { useAuthStore } from './AuthStore';
 
 export function useMetrics() {
-  const { token, isLoading: tokenLoading } = useFreshAccessToken();
-  const shouldFetch = token && !tokenLoading;
+  const token = useAuthStore((s) => s.accessToken);
+  const initialized = useAuthStore((s) => s.initialized);
+  const shouldFetch = token && initialized;
 
   const { data, error, isLoading, mutate } = useSWR(
     shouldFetch ? ['/api/metrics', token] : null,

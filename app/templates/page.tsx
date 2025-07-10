@@ -10,7 +10,8 @@ import {
 } from '../lib/templates';
 import TemplateForm from '../components/template/templateForm';
 import TemplateCard from '../components/template/templateCard';
-import { useFreshAccessToken } from '../lib/UseFResh';
+
+import { useAuthStore } from '../lib/AuthStore';
 
 type Template = {
   id: string;
@@ -19,7 +20,8 @@ type Template = {
 };
 
 export default function TemplatesPage() {
-  const { token: accessToken, isLoading: tokenLoading } = useFreshAccessToken();
+  const accessToken = useAuthStore((s) => s.accessToken);
+  const initialized = useAuthStore((s) => s.initialized);
   const [loading, setLoading] = useState(false);
 
   const {
@@ -27,7 +29,7 @@ export default function TemplatesPage() {
     mutate,
     isLoading: templatesLoading,
   } = useSWR(
-    accessToken ? ['templates', accessToken] : null,
+    accessToken && initialized ? ['templates', accessToken] : null,
     ([, token]) => fetchTemplates(token),
     { revalidateOnFocus: false },
   );
@@ -72,7 +74,7 @@ export default function TemplatesPage() {
       <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <TemplateForm onCreate={handleCreate} loading={loading} />
 
-        {tokenLoading || templatesLoading ? (
+        {templatesLoading || !initialized ? (
           <p className="col-span-full text-gray-400">Loading templates...</p>
         ) : (
           templates.map((template: Template) => (

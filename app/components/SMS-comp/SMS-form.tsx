@@ -21,22 +21,20 @@ export default function SmsForm() {
     resetForm,
   } = useSmsStore();
   const accessToken = useAuthStore((s) => s.accessToken);
-  const stableTokenRef = useRef(accessToken);
-
+  const initialized = useAuthStore((s) => s.initialized);
   const {
     data: templates = [],
     isLoading: loadingTemplates,
     error: templatesError,
   } = useSWR(
-    stableTokenRef.current ? ['templates', stableTokenRef.current] : null,
-    () => fetchTemplates(stableTokenRef.current!),
+    accessToken && initialized ? ['templates', accessToken] : null,
+    ([, token]) => fetchTemplates(token),
     { revalidateOnFocus: false },
   );
 
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [scheduledAt, setScheduledAt] = useState('');
-  const [testMode, setTestMode] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +67,6 @@ export default function SmsForm() {
           scheduledAt: scheduledAt || null,
           contact_group_ids:
             contactGroupIDs.length > 0 ? contactGroupIDs : null,
-          testMode,
         },
         {
           headers: {
@@ -162,13 +159,6 @@ export default function SmsForm() {
         </p>
       )}
       <div className="flex items-center gap-2">
-        <input
-          type="checkbox"
-          id="testMode"
-          checked={testMode}
-          onChange={(e) => setTestMode(e.target.checked)}
-          className="h-4 w-4 accent-pink-600"
-        />
         <label htmlFor="testMode" className="text-sm text-gray-400">
           Test Mode (simulate SMS without sending)
         </label>
