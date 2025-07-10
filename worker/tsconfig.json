@@ -9,5 +9,5 @@
     "strict": true,
     "skipLibCheck": true
   },
-  "include": ["*.ts", "lib/onfon.ts"]
+  "include": ["*.ts", "lib/**/*.ts"]
 }
