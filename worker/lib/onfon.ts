@@ -17,18 +17,18 @@ async function sendSmsOnfon(to: string[], message: string, sender_id: string) {
       headers: { 'Content-Type': 'application/json' },
     });
 
-    const recipients = res.data?.recipients;
+    const recipients = res.data?.Data;
     if (!recipients || !Array.isArray(recipients)) {
       console.error('Malformed Onfon response:', res.data);
       throw new Error('Malformed Onfon response');
     }
 
     return recipients.map((r: any) => ({
-      phone: r.Number,
-      status: r.Code === '000' ? 'success' : 'failed',
-      code: r.Code,
-      message: r.Message || 'No message',
-      type: classifyError(r.Code),
+      phone: r.MobileNumber,
+      status: r.MessageErrorCode === 0 ? 'success' : 'failed',
+      code: String(r.MessageErrorCode),
+      message: r.MessageErrorDescription || 'No message',
+      type: classifyError(String(r.MessageErrorCode)),
     }));
   } catch (err) {
     const parsed = parseError(err);
