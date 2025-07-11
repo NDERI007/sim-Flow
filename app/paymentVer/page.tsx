@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 
 export default function VerifyPage() {
   const searchParams = useSearchParams();
@@ -25,17 +25,30 @@ export default function VerifyPage() {
         });
         if (data.success) {
           setStatus('success');
-          setTimeout(() => router.push('/dashboard'), 2000);
+          setTimeout(() => router.push('/admin'), 2000);
         } else {
           setStatus('failed');
         }
       } catch (err) {
+        const error = err as AxiosError;
+
+        if (error.response) {
+          console.error(
+            'Payment verification failed (response):',
+            error.response.data,
+          );
+        } else if (error.request) {
+          console.error('No response received:', error.request);
+        } else {
+          console.error('Request setup error:', error.message);
+        }
+
         setStatus('failed');
       }
     }
 
     verifyPayment();
-  }, []);
+  }, [router, searchParams]);
 
   return (
     <div className="p-6 text-center text-white">

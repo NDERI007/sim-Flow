@@ -42,9 +42,12 @@ export async function GET(req: NextRequest) {
 
     // If successful, update quota
     if (status === 'success') {
-      const { error: rpcError } = await supabase.rpc('apply_quota_purchase', {
-        p_transaction_ref: reference,
-      });
+      const { error: rpcError } = await supabase.rpc(
+        'apply_quota_by_transaction',
+        {
+          p_transaction_ref: reference,
+        },
+      );
 
       if (rpcError) {
         console.error('🔴 Quota RPC failed:', rpcError.message);

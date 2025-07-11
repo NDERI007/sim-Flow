@@ -59,8 +59,8 @@ export default function PurchaseForm() {
 
         {/* SMS Credits Preview */}
         <div className="font-mono text-sm text-green-400">
-          You'll receive <span className="font-semibold">{credits}</span> SMS
-          credit{credits !== 1 ? 's' : ''}
+          You&apos;ll receive <span className="font-semibold">{credits}</span>{' '}
+          SMS credit{credits !== 1 ? 's' : ''}
         </div>
 
         {/* Payment Method */}

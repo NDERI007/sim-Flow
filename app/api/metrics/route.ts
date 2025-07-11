@@ -24,6 +24,9 @@ export async function GET(req: NextRequest) {
         p_today_utc: todayUtcIso,
       },
     );
+    if (countError) {
+      console.error('Failed to fetch count', countError.message);
+    }
 
     // ---------------- Scheduled Messages
 

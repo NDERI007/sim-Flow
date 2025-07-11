@@ -71,9 +71,12 @@ export async function POST(req: NextRequest) {
     }
 
     if (status === 'success') {
-      const { error: rpcError } = await supabase.rpc('apply_quota_purchase', {
-        p_transaction_ref: reference,
-      });
+      const { error: rpcError } = await supabase.rpc(
+        'apply_quota_by_transaction',
+        {
+          p_transaction_ref: reference,
+        },
+      );
 
       if (rpcError) {
         console.error('🔴 Webhook quota update failed:', rpcError.message);

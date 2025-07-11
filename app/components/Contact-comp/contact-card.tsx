@@ -26,7 +26,6 @@ export default function ContactGroupCard({
 
   const MAX_DISPLAY = 5;
   const hiddenCount = contacts.length - MAX_DISPLAY;
-  const visibleContacts = expanded ? contacts : contacts.slice(0, MAX_DISPLAY);
 
   return (
     <div className="rounded-xl border border-gray-800 bg-gray-950 p-4 shadow-sm sm:p-6">
