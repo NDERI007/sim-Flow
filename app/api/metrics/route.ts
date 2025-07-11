@@ -16,21 +16,14 @@ export async function GET(req: NextRequest) {
     const eatTodayStart = eatNow.startOf('day');
     const todayUtcIso = eatTodayStart.toUTC().toISO();
 
-    // ---------------- Sent Today
-    const { count: sentToday, error: sentTodayError } = await supabase
-      .from('messages')
-      .select('*', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('status', 'sent')
-      .gte('created_at', todayUtcIso); //
-
-    if (sentTodayError) {
-      console.error('🛑 SentToday fetch error:', sentTodayError);
-      return NextResponse.json(
-        { error: sentTodayError.message || 'Unknown error' },
-        { status: 500 },
-      );
-    }
+    // ---------------- Sent Today // ---------------- Count All failed
+    const { data: counts, error: countError } = await supabase.rpc(
+      'get_delivery_counts',
+      {
+        p_user_id: user.id,
+        p_today_utc: todayUtcIso,
+      },
+    );
 
     // ---------------- Scheduled Messages
 
@@ -62,25 +55,10 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // ---------------- Count All failed
-    const { count: failedCount, error: failedCountError } = await supabase
-      .from('messages')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('status', 'failed');
-
-    if (failedCountError) {
-      console.error('🛑 failed count fetch error:', failedCountError);
-      return NextResponse.json(
-        { error: 'Failed to count failed messages' },
-        { status: 500 },
-      );
-    }
-
     // ---------------- Response
     return NextResponse.json({
-      sentToday: sentToday || 0,
-      failedCount: failedCount || 0,
+      sentToday: counts?.sent_today || 0,
+      failedCount: counts?.failed_count || 0,
       scheduled: flatScheduled || [],
     });
   } catch (err) {

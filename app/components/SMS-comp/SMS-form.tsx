@@ -158,11 +158,6 @@ export default function SmsForm() {
           {feedback}
         </p>
       )}
-      <div className="flex items-center gap-2">
-        <label htmlFor="testMode" className="text-sm text-gray-400">
-          Test Mode (simulate SMS without sending)
-        </label>
-      </div>
 
       <button
         type="submit"

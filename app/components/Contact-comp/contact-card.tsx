@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Trash2, Pencil, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Pencil, ChevronDown } from 'lucide-react';
 import { ContactGroup } from '../../lib/smsStore';
+import { motion } from 'framer-motion';
 
 interface ContactGroupCardProps {
   id: ContactGroup['id'];
@@ -24,13 +25,15 @@ export default function ContactGroupCard({
   const [confirming, setConfirming] = useState(false);
 
   const MAX_DISPLAY = 5;
+  const hiddenCount = contacts.length - MAX_DISPLAY;
   const visibleContacts = expanded ? contacts : contacts.slice(0, MAX_DISPLAY);
-  const hiddenCount = contacts.length - visibleContacts.length;
 
   return (
     <div className="rounded-xl border border-gray-800 bg-gray-950 p-4 shadow-sm sm:p-6">
       <div className="mb-3 flex flex-col items-start justify-between gap-2 sm:flex-row sm:items-center">
-        <h2 className="text-base font-semibold text-gray-100">{group_name}</h2>
+        <h2 className="text-base font-semibold text-gray-100">
+          {group_name} ({contacts.length})
+        </h2>
 
         <div className="flex items-center gap-2">
           {onEdit && (
@@ -73,28 +76,41 @@ export default function ContactGroupCard({
         </div>
       </div>
 
-      <div className="text-sm text-gray-400">
-        {visibleContacts.map((contact, idx) => (
-          <div key={idx} className="mb-1">
-            {contact.name} — {contact.phone}
-          </div>
-        ))}
+      <div className="relative text-sm text-gray-400">
+        <motion.div
+          layout
+          initial={false}
+          animate={{ height: expanded ? 'auto' : '12rem' }}
+          transition={{ duration: 0.3 }}
+          className="overflow-hidden pr-2"
+        >
+          {contacts.map((contact, idx) => (
+            <div key={idx} className="mb-1">
+              {contact.name} — {contact.phone}
+            </div>
+          ))}
+        </motion.div>
 
-        {hiddenCount > 0 && (
-          <button
+        {/* Gradient overlay hint (optional) */}
+        {!expanded && hiddenCount > 0 && (
+          <div className="pointer-events-none absolute bottom-9 left-0 h-12 w-full bg-gradient-to-t from-gray-950 to-transparent" />
+        )}
+
+        {/* Toggle button */}
+        {contacts.length > MAX_DISPLAY && (
+          <motion.button
             onClick={() => setExpanded((prev) => !prev)}
             className="mt-2 flex items-center gap-1 text-sm text-gray-500 hover:text-gray-300"
+            initial={false}
           >
-            {expanded ? (
-              <>
-                Show Less <ChevronUp className="h-4 w-4" />
-              </>
-            ) : (
-              <>
-                Show {hiddenCount} More <ChevronDown className="h-4 w-4" />
-              </>
-            )}
-          </button>
+            <span>{expanded ? 'Show Less' : `Show ${hiddenCount} More`}</span>
+            <motion.div
+              animate={{ rotate: expanded ? 180 : 0 }}
+              transition={{ duration: 0.3 }}
+            >
+              <ChevronDown className="h-4 w-4" />
+            </motion.div>
+          </motion.button>
         )}
       </div>
     </div>

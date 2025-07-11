@@ -214,7 +214,7 @@ export async function POST(req: NextRequest) {
             opts: {
               jobId: `sms-${messageRow.id}-batch-${i}`,
               delay: i * 1000,
-              attempts: 1,
+              attempts: 3,
               backoff: { type: 'exponential', delay: 5000 },
               removeOnComplete: true,
               removeOnFail: false,

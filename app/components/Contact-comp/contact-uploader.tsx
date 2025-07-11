@@ -5,6 +5,7 @@ import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { validateAndFormatKenyanNumber } from '../../lib/validator/phoneN';
 import { useAuthStore } from '../../lib/AuthStore';
+import { mutate } from 'swr';
 
 type Contact = {
   name: string;
@@ -131,6 +132,7 @@ export default function Uploader({ onComplete }: { onComplete?: () => void }) {
       setDuplicates([]);
       setGroupName('');
       onComplete?.();
+      await mutate('rpc:contacts-with-groups');
     } catch (err) {
       const msg =
         err instanceof Error

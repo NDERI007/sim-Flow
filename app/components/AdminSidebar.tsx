@@ -17,6 +17,7 @@ export default function AdminSidebar() {
     { href: '/Reports', label: 'Delivery Reports' },
     { href: '/contacts', label: 'Contact groups' },
     { href: '/templates', label: 'Templates' },
+    { href: '/purchase', label: 'Pricing' },
   ];
 
   // Lock body scroll on mobile sidebar open
