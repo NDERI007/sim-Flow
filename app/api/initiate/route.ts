@@ -45,20 +45,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (!['card', 'mpesa'].includes(method)) {
-      return NextResponse.json(
-        { error: 'Invalid payment method' },
-        { status: 400 },
-      );
-    }
-
-    if (method === 'mpesa' && !phone) {
-      return NextResponse.json(
-        { error: 'Phone number required for MPesa' },
-        { status: 400 },
-      );
-    }
-
     // Calculate total amount in KES (e.g., 0.5 per SMS)
     const unitPrice = 0.5;
     const amountKES = Math.floor(credits * unitPrice);
@@ -101,7 +87,7 @@ export async function POST(req: NextRequest) {
         metadata: {
           credits,
         },
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment-verif`,
+        callback_url: 'http://localhost:3000/purchase?status=success',
       }),
     });
 
