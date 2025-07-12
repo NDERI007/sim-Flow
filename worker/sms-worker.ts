@@ -50,7 +50,6 @@ export const smsWorker = new Worker(
 
     const sender_id = userRow.sender_id;
 
-    // Simulated sending
     const results = await sendSmsOnfon(to_number, message, sender_id);
 
     // Upsert into message_contacts
@@ -98,7 +97,7 @@ export const smsWorker = new Worker(
   },
   {
     connection: redis,
-    concurrency: 5,
+    concurrency: 5, //The maximum number of jobs that the worker can process in parallel.
   },
 );
 

@@ -1,48 +1,19 @@
 'use client';
 
-import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { Suspense } from 'react';
 import PurchaseForm from '../components/purchase-comp/purchaseForm';
+import { PurchaseStatus } from '../components/purchase-comp/purchaseStatus';
 
 export default function PurchasePage() {
-  const searchParams = useSearchParams();
-  const router = useRouter();
-
-  const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const s = searchParams.get('status');
-    const e = searchParams.get('error');
-
-    if (s) setStatus(decodeURIComponent(s));
-    if (e) setError(decodeURIComponent(e));
-
-    // Clean up the URL after 3 seconds
-    if (s || e) {
-      const timeout = setTimeout(() => {
-        router.replace('/purchase');
-      }, 3000);
-
-      return () => clearTimeout(timeout);
-    }
-  }, [searchParams, router]);
-
   return (
-    <div className="mx-auto max-w-xl px-4 py-6">
-      {status && (
-        <div className="mb-4 rounded-lg bg-green-600 px-4 py-3 text-white shadow">
-          ✅ {status}
-        </div>
-      )}
+    <main className="min-h-screen bg-gray-50 px-4 py-6 text-gray-900 transition-colors dark:bg-gray-900 dark:text-gray-100">
+      <div className="mx-auto w-full max-w-xl space-y-6">
+        <Suspense fallback={null}>
+          <PurchaseStatus />
+        </Suspense>
 
-      {error && (
-        <div className="mb-4 rounded-lg bg-red-600 px-4 py-3 text-white shadow">
-          ❌ {error}
-        </div>
-      )}
-
-      <PurchaseForm />
-    </div>
+        <PurchaseForm />
+      </div>
+    </main>
   );
 }
