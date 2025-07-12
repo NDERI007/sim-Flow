@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import axios from 'axios';
+import { useAuthStore } from '../../lib/AuthStore';
 
 export default function PurchaseForm() {
   const [amount, setAmount] = useState(100); // in KES
-  const [method, setMethod] = useState('card');
-  const [phone, setPhone] = useState('');
-  const [loading, setLoading] = useState(false);
 
+  const [loading, setLoading] = useState(false);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const pricePerSms = 0.5;
   const credits = Math.floor(amount / pricePerSms);
 
@@ -15,11 +15,17 @@ export default function PurchaseForm() {
     setLoading(true);
 
     try {
-      const { data } = await axios.post('/api/initiate', {
-        credits,
-        method,
-        ...(method === 'mpesa' && { phone }),
-      });
+      const { data } = await axios.post(
+        '/api/initiate',
+        {
+          credits,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
+        },
+      );
 
       if (data?.authorization_url) {
         window.location.href = data.authorization_url;
@@ -62,37 +68,6 @@ export default function PurchaseForm() {
           You&apos;ll receive <span className="font-semibold">{credits}</span>{' '}
           SMS credit{credits !== 1 ? 's' : ''}
         </div>
-
-        {/* Payment Method */}
-        <div>
-          <label className="mb-1 block text-sm text-zinc-300">
-            Payment Method
-          </label>
-          <select
-            value={method}
-            onChange={(e) => setMethod(e.target.value)}
-            className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none"
-          >
-            <option value="card">Card</option>
-            <option value="mpesa">MPesa</option>
-          </select>
-        </div>
-
-        {/* Phone input if MPesa */}
-        {method === 'mpesa' && (
-          <div>
-            <label className="mb-1 block text-sm text-zinc-300">
-              Phone Number
-            </label>
-            <input
-              type="tel"
-              placeholder="e.g. 0712345678"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none"
-            />
-          </div>
-        )}
 
         {/* Submit */}
         <button

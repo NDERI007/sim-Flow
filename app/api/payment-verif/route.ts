@@ -8,6 +8,7 @@ export async function GET(req: NextRequest) {
   if (!reference) {
     return NextResponse.redirect('/purchase?error=Missing+reference');
   }
+  console.log('Verifying transaction with reference:', reference);
 
   try {
     const res = await fetch(
@@ -54,9 +55,14 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    return NextResponse.redirect(`/purchase?status=${status}`);
+    const Origin = req.nextUrl.origin;
+
+    return NextResponse.redirect(`${Origin}/purchase?status=${status}`);
   } catch (err) {
+    const Origin = req.nextUrl.origin;
     console.error('🔴 Verification error:', err);
-    return NextResponse.redirect(`/purchase?error=Something+went+wrong`);
+    return NextResponse.redirect(
+      `${Origin}/purchase?error=Something+went+wrong`,
+    );
   }
 }

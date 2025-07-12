@@ -71,10 +71,8 @@ export async function POST(req: NextRequest) {
       user_id: user.id,
       amount: amountKES,
       credits,
-      method,
       status: 'pending',
       transaction_ref: transactionRef,
-      ...(method === 'mpesa' && { phone_number: phone }),
     });
 
     if (insertError) {
@@ -84,6 +82,10 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
+    console.log({
+      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+      'Content-Type': 'application/json',
+    });
 
     // Call Paystack to initialize transaction
     const res = await fetch('https://api.paystack.co/transaction/initialize', {
@@ -96,14 +98,10 @@ export async function POST(req: NextRequest) {
         email: user.email,
         amount: amountcents,
         reference: transactionRef,
-        channels: method === 'mpesa' ? ['mpesa'] : ['card'],
         metadata: {
-          user_id: user.id,
           credits,
-          method,
         },
-        ...(method === 'mpesa' && { phone }), // optional for MPesa
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payments-verif`,
+        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/api/payment-verif`,
       }),
     });
 

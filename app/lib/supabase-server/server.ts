@@ -28,3 +28,8 @@ export async function getSupabaseClientFromRequest(req: NextRequest) {
 
   return { supabase, user, error: null };
 }
+//ECONNRESET is a low-level network error, and in the context of Supabase or any HTTP request, it usually means:
+
+//Supabase’s API did not respond in time, or
+
+//Something interrupted the connection (network issue, DNS problem, rate-limiting, firewall/VPN interference, etc.)

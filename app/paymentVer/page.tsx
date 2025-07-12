@@ -20,9 +20,10 @@ export default function VerifyPage() {
 
     async function verifyPayment() {
       try {
-        const { data } = await axios.post('/api/payment-verif', {
-          reference,
-        });
+        const { data } = await axios.get(
+          `/api/payment-verif?reference=${reference}`,
+        );
+
         if (data.success) {
           setStatus('success');
           setTimeout(() => router.push('/admin'), 2000);
