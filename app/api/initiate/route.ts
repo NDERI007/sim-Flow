@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
       : null;
 
     if (!token) {
-      console.warn('⚠️ Missing or malformed Authorization header');
+      console.warn('Missing or malformed Authorization header');
       return NextResponse.json(
         { message: 'Missing or invalid token' },
         { status: 401 },
@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const { credits, method, phone } = await req.json();
+    const { credits } = await req.json();
 
     // Validate inputs
     if (!credits || credits < 3) {

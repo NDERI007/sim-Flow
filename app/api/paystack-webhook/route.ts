@@ -16,7 +16,6 @@ export async function POST(req: NextRequest) {
     data: {
       reference: string;
       status: 'success' | 'failed' | 'abandoned';
-      [key: string]: any; // for any extra fields Paystack might send
     };
   };
 
