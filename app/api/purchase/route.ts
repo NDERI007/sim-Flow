@@ -1,6 +1,37 @@
+import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-import { getSupabaseClientFromRequest } from '../../lib/supabase-server/server';
 
+const createSupabaseClient = (token: string) =>
+  createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    },
+  );
+
+async function getSupabaseClientFromRequest(req: NextRequest) {
+  const token = req.headers.get('authorization')?.replace('Bearer ', '');
+  if (!token) {
+    return { error: 'Missing token' };
+  }
+
+  const supabase = createSupabaseClient(token);
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return { error: 'Invalid user' };
+  }
+
+  return { supabase, user };
+}
 export async function POST(req: NextRequest) {
   const { supabase, user, error } = await getSupabaseClientFromRequest(req);
 
