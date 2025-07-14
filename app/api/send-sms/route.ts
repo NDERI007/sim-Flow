@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
       });
     // Step 1: Check quota before inserting message or queuing jobs
     const { data: quotaData, error: quotaError } = await supabase.rpc(
-      'check_quota',
+      'quota_check',
       {
         p_uid: user.id,
         p_amount: totalSegments,
