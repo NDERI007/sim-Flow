@@ -178,6 +178,32 @@ smsWorker.on('failed', async (job, err) => {
     }
   }
 });
+let idleTimer: NodeJS.Timeout | null = null;
+const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes of inactivity
+
+smsWorker.on('drained', () => {
+  console.log('📭 All jobs completed, starting idle shutdown timer...');
+  if (idleTimer) clearTimeout(idleTimer);
+  idleTimer = setTimeout(async () => {
+    console.log('⏹️ No jobs for 10 minutes. Shutting down worker...');
+    try {
+      await smsWorker.close(); // graceful shutdown
+      await redis.quit(); // release Upstash connection
+      process.exit(0);
+    } catch (err) {
+      console.error('❌ Error during shutdown:', err);
+      process.exit(1);
+    }
+  }, IDLE_TIMEOUT_MS);
+});
+
+smsWorker.on('active', () => {
+  if (idleTimer) {
+    console.log('📥 New job detected. Cancelling shutdown timer.');
+    clearTimeout(idleTimer);
+    idleTimer = null;
+  }
+});
 
 console.log('📡 SMS Worker is running...');
 
