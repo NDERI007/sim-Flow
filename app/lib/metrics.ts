@@ -9,11 +9,11 @@ export function useMetrics() {
 
   const { data, error, isLoading, mutate } = useSWR(
     shouldFetch ? ['/api/metrics', token] : null,
-    ([url, freshToken]) =>
+    ([url, Token]) =>
       axios
         .get(url, {
           headers: {
-            Authorization: `Bearer ${freshToken}`,
+            Authorization: `Bearer ${Token}`,
           },
         })
         .then((res) => res.data),

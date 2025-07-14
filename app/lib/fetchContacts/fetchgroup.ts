@@ -2,17 +2,17 @@ import { createClient } from '@supabase/supabase-js';
 
 export async function fetchGroupContacts(
   groupIds: string[],
-  accessToken: string,
+  accessToken?: string, // made optional
 ) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    accessToken
+      ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      : process.env.SUPABASE_SERVICE_ROLE_KEY!, // fallback to service key
     {
-      global: {
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-        },
-      },
+      global: accessToken
+        ? { headers: { Authorization: `Bearer ${accessToken}` } }
+        : {},
       auth: { persistSession: false },
     },
   );
@@ -38,6 +38,7 @@ export async function fetchGroupContacts(
       groupIds,
     });
   }
+
   type Row = {
     contact_id: string;
     phone: string;
@@ -50,4 +51,3 @@ export async function fetchGroupContacts(
     group_id: row.group_id,
   }));
 }
-//SELECT 1 is a convention used in EXISTS clauses to efficiently check if a row exists without retrieving full data.

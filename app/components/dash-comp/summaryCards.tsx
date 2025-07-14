@@ -1,7 +1,7 @@
 'use client';
 
 import { AlertTriangle, BarChart, MessageCircle } from 'lucide-react';
-import { useQuota } from '../../lib/RealTime_Q';
+import { useQuota } from '../../lib/Quota_swr';
 import { useMetrics } from '../../lib/metrics';
 
 export default function SummaryCards() {
@@ -15,7 +15,7 @@ export default function SummaryCards() {
       icon: BarChart,
       color:
         quota == null || quotaLoading
-          ? 'text-gray-600 text-gray-400'
+          ? 'text-gray-400'
           : quota <= 0
             ? 'text-red-800 text-red-300'
             : quota <= 10
@@ -28,7 +28,7 @@ export default function SummaryCards() {
             ? 'bg-red-50 bg-red-900/40'
             : quota <= 10
               ? 'bg-yellow-50 bg-yellow-900/40'
-              : 'bg-green-50 dark:bg-green-900/40',
+              : 'bg-green-50 bg-green-900/40',
       showUpgrade: quota != null && quota <= 10,
     },
     {

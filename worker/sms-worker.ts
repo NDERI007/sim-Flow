@@ -4,6 +4,8 @@ import { createClient } from '@supabase/supabase-js';
 import { DateTime } from 'luxon';
 import dotenv from 'dotenv';
 import { sendSmsOnfon } from './lib/onfon.js';
+import express from 'express';
+import { validateCronSecret } from './lib/validateCRON.js';
 
 dotenv.config();
 
@@ -57,6 +59,7 @@ export const smsWorker = new Worker(
       message_id,
       contact_id: contact_map[res.phone],
       status: res.status,
+      to_number: res.phone,
 
       error: res.status === 'failed' ? res.message : null,
     }));
@@ -177,3 +180,18 @@ smsWorker.on('failed', async (job, err) => {
 });
 
 console.log('📡 SMS Worker is running...');
+
+const app = express();
+
+app.get('/ping', (req, res) => {
+  if (!validateCronSecret(req)) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  res.json({ ok: true, message: 'Worker is awake' });
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`🚀 Worker HTTP server listening on port ${PORT}`);
+});

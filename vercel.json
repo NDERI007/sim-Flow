@@ -1,0 +1,8 @@
+{
+  "cron": [
+    {
+      "path": "/api/vercel-cron",
+      "schedule": "@every 1m"
+    }
+  ]
+}

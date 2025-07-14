@@ -75,19 +75,6 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    let delay = 0;
-    if (scheduledAt) {
-      const scheduledTime = new Date(scheduledAt);
-      if (isNaN(scheduledTime.getTime()) || scheduledTime <= new Date()) {
-        console.warn('⚠️ Invalid or past scheduledAt:', { scheduledAt });
-        return NextResponse.json(
-          { message: 'Invalid future date' },
-          { status: 400 },
-        );
-      }
-      delay = scheduledTime.getTime() - Date.now();
-    }
-
     let groupContacts = [];
     if (Array.isArray(contact_group_ids) && contact_group_ids.length > 0) {
       try {
@@ -115,6 +102,32 @@ export async function POST(req: NextRequest) {
         message,
         devMode: true,
       });
+    // Step 1: Check quota before inserting message or queuing jobs
+    const { data: quotaData, error: quotaError } = await supabase.rpc(
+      'check_quota',
+      {
+        p_uid: user.id,
+        p_amount: totalSegments,
+      },
+    );
+
+    const quotaResult = quotaData?.[0];
+
+    if (quotaError || !quotaResult?.has_quota) {
+      console.warn('❌ Insufficient quota or RPC failed:', {
+        quotaError,
+        quotaResult,
+      });
+
+      return NextResponse.json(
+        {
+          message: quotaResult?.reason || 'Insufficient quota',
+          available: quotaResult?.available ?? null,
+          required: quotaResult?.required ?? totalSegments,
+        },
+        { status: 403 },
+      );
+    }
 
     console.log('✅ Recipients prepared:', {
       totalRecipients,
@@ -158,6 +171,24 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
+    async function callWorkerPing() {
+      try {
+        const res = await fetch(`${process.env.WORKER_URL}/ping`, {
+          method: 'GET',
+          headers: {
+            'x-cron-secret': process.env.CRON_SECRET!,
+          },
+        });
+
+        if (!res.ok) {
+          console.warn('⚠️ Worker ping failed with status', res.status);
+        } else {
+          console.log('✅ Worker ping successful');
+        }
+      } catch (err) {
+        console.error('❌ Worker ping error:', err);
+      }
+    }
 
     const phoneBatches = [];
     for (let i = 0; i < allPhones.length; i += BATCH_SIZE) {
@@ -180,6 +211,7 @@ export async function POST(req: NextRequest) {
 
     try {
       if (phoneBatches.length > 0) {
+        await callWorkerPing();
         await flowProducer.add({
           name: `send_sms_flow_${messageRow.id}`,
           queueName: 'smsQueue',
@@ -188,12 +220,10 @@ export async function POST(req: NextRequest) {
             totalRecipients,
             metadata: {
               source: 'dashboard',
-              scheduled: Boolean(scheduledAt),
             },
           },
           opts: {
             jobId: `flow-${messageRow.id}`,
-            delay,
             attempts: 1,
             removeOnComplete: true,
           },
@@ -241,7 +271,6 @@ export async function POST(req: NextRequest) {
 
         console.log('✅ Flow added to BullMQ:', {
           batches: phoneBatches.length,
-          delay,
         });
       }
     } catch (err) {
