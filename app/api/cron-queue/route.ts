@@ -75,6 +75,7 @@ export async function GET(req: Request) {
       const { data: quotaData, error: quotaError } = await supabase.rpc(
         'quota_check',
         {
+          p_uid: user_id,
           p_amount: totalSegments,
         },
       );
