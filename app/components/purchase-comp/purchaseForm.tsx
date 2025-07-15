@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useAuthStore } from '../../lib/AuthStore';
+import { Wallet } from 'lucide-react';
 
 export default function PurchaseForm() {
   const [amount, setAmount] = useState(100); // in KES
@@ -51,16 +52,26 @@ export default function PurchaseForm() {
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* Amount input */}
         <div>
-          <label className="mb-1 block text-sm text-zinc-300">
+          <label htmlFor="amount" className="mb-1 block text-sm text-zinc-300">
             Amount (KES)
           </label>
-          <input
-            type="number"
-            min={1}
-            value={amount}
-            onChange={(e) => setAmount(Number(e.target.value))}
-            className="w-full rounded-md border border-zinc-700 bg-zinc-800 px-4 py-2 text-white focus:ring-2 focus:ring-green-500 focus:outline-none"
-          />
+          <div className="relative">
+            <span className="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-zinc-400">
+              <Wallet size={18} />
+            </span>
+            <input
+              id="amount"
+              type="number"
+              min={4}
+              value={amount}
+              onChange={(e) => setAmount(Number(e.target.value))}
+              placeholder="Minimum 4 KES"
+              className="w-full rounded-md border border-zinc-700 bg-zinc-800 py-2 pr-4 pl-10 text-white placeholder-zinc-500 focus:ring-2 focus:ring-green-500 focus:outline-none"
+            />
+          </div>
+          {amount > 0 && amount < 4 && (
+            <p className="mt-1 text-sm text-red-500">Minimum amount is KES 3</p>
+          )}
         </div>
 
         {/* SMS Credits Preview */}
@@ -72,7 +83,7 @@ export default function PurchaseForm() {
         {/* Submit */}
         <button
           type="submit"
-          disabled={loading || credits <= 0}
+          disabled={loading || credits <= 0 || amount < 3}
           className="w-full rounded-md bg-green-500 py-2 font-semibold text-white transition hover:bg-green-600 disabled:opacity-50"
         >
           {loading ? 'Processing...' : 'Continue to Payment'}

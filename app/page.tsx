@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRef } from 'react';
 import { motion, useScroll, useTransform } from 'framer-motion';
+import { Mail, Phone } from 'lucide-react';
 
 export default function Home() {
   const containerRef = useRef(null);
@@ -31,7 +32,6 @@ export default function Home() {
           Get Started
         </Link>
       </div>
-
       {/* Parallax Background */}
       <motion.div className="pointer-events-none absolute inset-0 z-0">
         <motion.div style={{ y: y1 }} className="absolute top-10 left-10">
@@ -51,7 +51,6 @@ export default function Home() {
           </svg>
         </motion.div>
       </motion.div>
-
       {/* Hero */}
       <section className="relative z-10 flex h-screen flex-col items-center justify-center px-4 text-center">
         <motion.h1
@@ -82,6 +81,53 @@ export default function Home() {
         >
           Send bulk sms. Organize contacts. All in one dashboard.
         </motion.p>
+      </section>
+
+      {/* Contact Us */}
+      <section className="relative z-10 bg-gradient-to-t from-[#0f0c29] to-transparent px-6 py-13 text-center">
+        <motion.h2
+          initial={{ opacity: 0, y: 40 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.6 }}
+          transition={{ duration: 1, ease: 'easeOut' }}
+          className="mb-4 text-4xl font-semibold text-purple-200"
+        >
+          Get in Touch
+        </motion.h2>
+
+        <motion.p
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.6 }}
+          transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
+          className="mx-auto mb-8 max-w-xl text-lg text-slate-400"
+        >
+          Have questions, feedback, or need support? Reach out anytime.
+        </motion.p>
+
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.6 }}
+          transition={{ duration: 1, delay: 0.4, ease: 'easeOut' }}
+          className="flex flex-col justify-center gap-4 text-white md:flex-row"
+        >
+          <a
+            href="mailto:support@yourdomain.com"
+            className="flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-6 py-3 transition hover:bg-purple-500"
+          >
+            <Mail />
+            will do
+          </a>
+          <p className="flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-6 py-3 transition hover:bg-purple-500">
+            <Phone size={18} />
+            +254 790504636
+          </p>
+          <p className="flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-6 py-3 transition hover:bg-purple-500">
+            <Phone size={18} />
+            +254 727 942764
+          </p>
+        </motion.div>
       </section>
     </main>
   );

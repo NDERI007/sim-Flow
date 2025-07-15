@@ -106,7 +106,6 @@ export async function POST(req: NextRequest) {
     const { data: quotaData, error: quotaError } = await supabase.rpc(
       'quota_check',
       {
-        p_uid: user.id,
         p_amount: totalSegments,
       },
     );
@@ -210,7 +209,9 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      if (phoneBatches.length > 0) {
+      const isScheduled = scheduledAt && new Date(scheduledAt) > new Date();
+
+      if (!isScheduled && phoneBatches.length > 0) {
         await callWorkerPing();
         await flowProducer.add({
           name: `send_sms_flow_${messageRow.id}`,

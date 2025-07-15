@@ -100,7 +100,7 @@ export default function LoginPage() {
 
         <button
           type="submit"
-          className="w-full rounded-md bg-pink-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-fuchsia-600 focus:outline-none"
+          className="w-full rounded-md bg-pink-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-pink-800 focus:outline-none"
         >
           Log In
         </button>

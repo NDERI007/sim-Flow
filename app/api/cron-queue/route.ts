@@ -72,7 +72,30 @@ export async function GET(req: Request) {
           message,
           devMode: true,
         });
+      const { data: quotaData, error: quotaError } = await supabase.rpc(
+        'quota_check',
+        {
+          p_amount: totalSegments,
+        },
+      );
 
+      const quotaResult = quotaData?.[0];
+
+      if (quotaError || !quotaResult?.has_quota) {
+        console.warn('❌ Insufficient quota or RPC failed:', {
+          quotaError,
+          quotaResult,
+        });
+
+        return NextResponse.json(
+          {
+            message: quotaResult?.reason || 'Insufficient quota',
+            available: quotaResult?.available ?? null,
+            required: quotaResult?.required ?? totalSegments,
+          },
+          { status: 403 },
+        );
+      }
       if (totalRecipients === 0 || allPhones.length === 0) {
         console.warn('⚠️ No recipients found for message', { id });
         continue;
@@ -168,3 +191,8 @@ export async function GET(req: Request) {
     clearTimeout(timeout);
   }
 }
+//SECURITY INVOKER (default):
+//“Run this function with the permissions of the user who calls it.
+
+//SECURITY DEFINER:
+//“Run this function with the permissions of the function’s creator.”

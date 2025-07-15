@@ -1,7 +1,7 @@
 import { Request } from 'express';
 
 export function validateCronSecret(req: Request) {
-  const expected = process.env.CRON_SECRET;
+  const expected = process.env.CRON_SECRET!;
   const received = req.headers['x-cron-secret'];
 
   // Normalize header (can be string or string[])

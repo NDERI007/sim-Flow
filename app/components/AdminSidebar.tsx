@@ -18,6 +18,7 @@ export default function AdminSidebar() {
     { href: '/contacts', label: 'Contact groups' },
     { href: '/templates', label: 'Templates' },
     { href: '/purchase', label: 'Pricing' },
+    { href: '/Quota-Usage', label: 'Quota Usage' },
   ];
 
   // Lock body scroll on mobile sidebar open
