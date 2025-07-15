@@ -14,7 +14,7 @@ const flowProducer = new FlowProducer({ connection });
 const BATCH_SIZE = 500;
 
 export async function GET(req: Request) {
-  const TIMEOUT_MS = 20_000;
+  const TIMEOUT_MS = 30_000;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
 
@@ -50,7 +50,13 @@ export async function GET(req: Request) {
     let processed = 0;
 
     for (const msg of messages) {
-      const { id, user_id, message, to_number = [], contact_group_ids } = msg;
+      const {
+        id,
+        user_id,
+        message,
+        to_number = [],
+        contact_group_ids = [],
+      } = msg;
 
       let groupContacts = [];
       if (contact_group_ids.length > 0) {
@@ -110,6 +116,8 @@ export async function GET(req: Request) {
       for (let i = 0; i < allPhones.length; i += BATCH_SIZE) {
         phoneBatches.push(allPhones.slice(i, i + BATCH_SIZE));
       }
+      console.log('✅ allPhones:', allPhones);
+      console.log('✅ type:', typeof allPhones);
 
       try {
         await flowProducer.add({
