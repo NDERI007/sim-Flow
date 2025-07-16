@@ -52,7 +52,7 @@ export default function Home() {
         </motion.div>
       </motion.div>
       {/* Hero */}
-      <section className="relative z-10 flex h-screen flex-col items-center justify-center px-4 text-center">
+      <section className="relative z-10 flex h-screen flex-col items-center justify-center text-center">
         <motion.h1
           initial={{ opacity: 0, y: 40 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -83,35 +83,16 @@ export default function Home() {
         </motion.p>
       </section>
 
-      {/* Contact Us */}
-      <section className="relative z-10 bg-gradient-to-t from-[#0f0c29] to-transparent px-6 py-13 text-center">
-        <motion.h2
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={{ duration: 1, ease: 'easeOut' }}
-          className="mb-4 text-4xl font-semibold text-purple-200"
-        >
+      <footer className="bg-gradient-to-t from-[#0f0c29] to-transparent px-6 py-12 text-center">
+        <h2 className="mb-4 text-4xl font-semibold text-purple-200">
           Get in Touch
-        </motion.h2>
+        </h2>
 
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={{ duration: 1, delay: 0.2, ease: 'easeOut' }}
-          className="mx-auto mb-8 max-w-xl text-lg text-slate-400"
-        >
+        <p className="mx-auto mb-8 max-w-xl text-lg text-slate-400">
           Have questions, feedback, or need support? Reach out anytime.
-        </motion.p>
+        </p>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={{ duration: 1, delay: 0.4, ease: 'easeOut' }}
-          className="flex flex-col justify-center gap-4 text-white md:flex-row"
-        >
+        <div className="flex flex-col justify-center gap-4 text-white md:flex-row">
           <a
             href="mailto:support@yourdomain.com"
             className="flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-6 py-3 transition hover:bg-purple-500"
@@ -127,8 +108,8 @@ export default function Home() {
             <Phone size={18} />
             +254 727 942764
           </p>
-        </motion.div>
-      </section>
+        </div>
+      </footer>
     </main>
   );
 }

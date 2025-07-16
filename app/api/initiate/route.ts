@@ -2,6 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { v4 as uuidv4 } from 'uuid';
+import { parsePaystackError } from '../../lib/paystackE/stackErr';
 
 export async function POST(req: NextRequest) {
   try {
@@ -104,10 +105,8 @@ export async function POST(req: NextRequest) {
       authorization_url: paystackData.data.authorization_url,
     });
   } catch (err) {
-    console.error('🔴 Payment initiation error:', err);
-    return NextResponse.json(
-      { error: 'Something went wrong' },
-      { status: 500 },
-    );
+    const { reason, statusCode, raw } = parsePaystackError(err);
+    console.error('Payment initiation error:', reason, raw);
+    return NextResponse.json({ error: reason }, { status: statusCode });
   }
 }

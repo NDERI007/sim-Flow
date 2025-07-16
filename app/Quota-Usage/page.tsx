@@ -17,7 +17,13 @@ export default function QuotaReport() {
   const [logs, setLogs] = useState<QuotaLog[]>([]);
   const [reasonFilter, setReasonFilter] = useState('all');
 
-  const Reasons = ['all', 'purchase', 'send_sms', 'retries_exhausted'];
+  const Reasons = [
+    'all',
+    'purchase',
+    'send_sms',
+    'retries_exhausted',
+    'scheduled-send',
+  ];
 
   useEffect(() => {
     const fetchLogs = async () => {
