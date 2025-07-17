@@ -27,12 +27,16 @@ export default function RefundModal({
       } else {
         setError(res.data?.message || 'Refund failed');
       }
-    } catch (err: any) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'An unexpected error occurred',
-      );
+    } catch (err) {
+      let message = 'An unexpected error occurred';
+
+      if (axios.isAxiosError(err)) {
+        message = err.response?.data?.message || err.message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
+
+      setError(message);
     } finally {
       setLoading(false);
     }

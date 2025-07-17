@@ -68,7 +68,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: 'No scheduled messages found' });
     }
 
-    let allMessages: ScheduledMessage[] = [];
+    const allMessages: ScheduledMessage[] = [];
     for (const user_id of userIds) {
       const { data: messages, error: msgError } = await supabase
         .rpc('get_scheduled_messages', { p_user_id: user_id })
