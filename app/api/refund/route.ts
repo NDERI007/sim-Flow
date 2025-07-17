@@ -4,12 +4,9 @@ import axios from 'axios';
 import { parsePaystackError } from '../../lib/paystackE/stackErr';
 
 const supabase = createClient(
-  process.env.SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!,
 );
-
-const PAYSTACK_SECRET = process.env.PAYSTACK_SECRET_KEY!;
-const PAYSTACK_API_URL = 'https://api.paystack.co/refund';
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
@@ -25,7 +22,7 @@ export async function POST(req: NextRequest) {
   // Fetch transaction from DB
   const { data: purchase, error } = await supabase
     .from('purchases')
-    .select('*')
+    .select('status, created_at')
     .eq('transaction_ref', transaction_ref)
     .single();
 
@@ -57,11 +54,11 @@ export async function POST(req: NextRequest) {
   try {
     // Call Paystack refund API
     await axios.post(
-      PAYSTACK_API_URL,
+      'https://api.paystack.co/refund',
       { transaction: transaction_ref },
       {
         headers: {
-          Authorization: `Bearer ${PAYSTACK_SECRET}`,
+          Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY!}`,
           'Content-Type': 'application/json',
         },
       },
