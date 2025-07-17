@@ -61,3 +61,8 @@ export function useQuota() {
     mutate,
   };
 }
+//SECURITY DEFINER
+//Executes with the privileges of function's creator.
+
+//SECURITY INVOKER (default)
+//Executes with the privileges of the user calling the function.

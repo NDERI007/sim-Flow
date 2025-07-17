@@ -17,14 +17,12 @@ export async function insertMessage({
   scheduledAt,
   groupContacts,
   to_number,
-  user_id,
 }: {
   supabase: SupabaseClient;
   message: string;
   scheduledAt?: string;
   groupContacts: GroupContact[];
   to_number: string[];
-  user_id: string;
 }): Promise<MessageRow> {
   try {
     if (groupContacts.length > 0) {
@@ -33,18 +31,14 @@ export async function insertMessage({
         group_id,
       }));
 
-      const { data, error } = await supabase.rpc(
-        'insert_message_with_contacts',
-        {
-          p_message: message,
-          p_status: scheduledAt ? 'scheduled' : 'queued',
-          p_scheduled_at: scheduledAt
-            ? new Date(scheduledAt).toISOString()
-            : null,
-          p_group_contacts: groupContactsPayload,
-          p_user_id: user_id,
-        },
-      );
+      const { data, error } = await supabase.rpc('insert_message_with_groups', {
+        p_message: message,
+        p_status: scheduledAt ? 'scheduled' : 'queued',
+        p_scheduled_at: scheduledAt
+          ? new Date(scheduledAt).toISOString()
+          : null,
+        p_group_contacts: groupContactsPayload,
+      });
 
       if (error || !data?.[0]) {
         console.error('❌ insertMessage RPC Error:', {
@@ -57,7 +51,6 @@ export async function insertMessage({
             status: scheduledAt ? 'scheduled' : 'queued',
             scheduledAt,
             groupContactsPayload,
-            user_id,
           },
         });
 
@@ -74,7 +67,6 @@ export async function insertMessage({
           {
             to_number,
             message,
-            user_id,
             status: scheduledAt ? 'scheduled' : 'queued',
             scheduled_at: scheduledAt
               ? new Date(scheduledAt).toISOString()
@@ -93,7 +85,6 @@ export async function insertMessage({
           inputs: {
             to_number,
             message,
-            user_id,
             status: scheduledAt ? 'scheduled' : 'queued',
             scheduled_at: scheduledAt
               ? new Date(scheduledAt).toISOString()

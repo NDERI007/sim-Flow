@@ -60,7 +60,6 @@ export async function POST(req: NextRequest) {
     } = body;
 
     console.log('Incoming send-sms request:', {
-      user: user.id,
       to_number,
       message,
       scheduledAt,
@@ -151,7 +150,6 @@ export async function POST(req: NextRequest) {
         scheduledAt,
         groupContacts,
         to_number,
-        user_id: user.id,
       });
       console.log('✅ Message inserted with ID:', messageRow.id);
     } catch (err) {

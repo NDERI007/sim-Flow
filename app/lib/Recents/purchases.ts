@@ -13,10 +13,8 @@ export interface PurchaseLog {
 }
 
 // Supabase RPC fetcher
-const fetchRecentPurchases = async (userId: string): Promise<PurchaseLog[]> => {
-  const { data, error } = await supabase.rpc('get_recent_purchases', {
-    p_user_id: userId,
-  });
+const fetchRecentPurchases = async (): Promise<PurchaseLog[]> => {
+  const { data, error } = await supabase.rpc('get_recent_purchases');
 
   if (error) {
     console.error('Error fetching recent purchases:', error);
@@ -28,16 +26,15 @@ const fetchRecentPurchases = async (userId: string): Promise<PurchaseLog[]> => {
 
 export function useRecentPurchases() {
   const user = useAuthStore((state) => state.user);
-  const userId = user?.id;
 
   const { data, error, isLoading, mutate } = useSWR(
-    userId ? ['recent-purchases', userId] : null,
-    () => fetchRecentPurchases(userId!),
+    user ? 'recent-purchases' : null,
+    () => fetchRecentPurchases(),
   );
 
   // Subscribe to realtime updates
   useEffect(() => {
-    if (!userId) return;
+    if (!user) return;
 
     const channel = supabase
       .channel('purchases-updates')
@@ -47,11 +44,10 @@ export function useRecentPurchases() {
           event: 'UPDATE',
           schema: 'public',
           table: 'purchases',
-          filter: `user_id=eq.${userId}`,
         },
         (payload) => {
           const updated = payload.new;
-          if (['success', 'refund'].includes(updated?.status)) {
+          if (['success', 'refunded'].includes(updated?.status)) {
             mutate();
           }
         },
@@ -62,7 +58,7 @@ export function useRecentPurchases() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [userId, mutate]);
+  }, [user, mutate]);
 
   return {
     purchases: data ?? [],

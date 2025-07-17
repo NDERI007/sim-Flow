@@ -63,16 +63,12 @@ export async function POST(req: NextRequest) {
     });
 
     if (insertError) {
-      console.error('🔴 Failed to insert purchase:', insertError.message);
+      console.error('Failed to insert purchase:', insertError.message);
       return NextResponse.json(
         { error: 'Failed to log purchase' },
         { status: 500 },
       );
     }
-    console.log({
-      Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
-      'Content-Type': 'application/json',
-    });
 
     // Call Paystack to initialize transaction
     const res = await fetch('https://api.paystack.co/transaction/initialize', {

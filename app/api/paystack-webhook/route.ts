@@ -13,13 +13,30 @@ export async function POST(req: NextRequest) {
 
   const rawBody = await req.text();
   const signature = req.headers.get('x-paystack-signature');
-  type PaystackEvent = {
-    event: string;
+  type ChargeEvent = {
+    event: 'charge.success' | 'charge.failed' | 'charge.abandoned';
     data: {
       reference: string;
       status: 'success' | 'failed' | 'abandoned';
     };
   };
+
+  type RefundEvent = {
+    event:
+      | 'refund.processed'
+      | 'refund.processing'
+      | 'refund.pending'
+      | 'charge.refunded'
+      | 'refund.failed'
+      | 'charge.refund.failed';
+    data: {
+      transaction_reference: string;
+
+      status?: string; // Paystack may or may not include status here
+    };
+  };
+
+  type PaystackEvent = ChargeEvent | RefundEvent;
 
   // Validate signature
   const hash = crypto
@@ -42,14 +59,19 @@ export async function POST(req: NextRequest) {
 
   const { event: eventType, data } = event;
 
-  const reference = data?.reference;
-  const status = data?.status;
+  const reference =
+    'reference' in data
+      ? data.reference
+      : 'transaction_reference' in data &&
+          typeof data.transaction_reference === 'string'
+        ? data.transaction_reference
+        : undefined;
 
   if (!reference) {
     console.warn('No reference in webhook');
     return NextResponse.json({ message: 'No reference' }, { status: 400 });
   }
-
+  const status = data?.status;
   if (['refund.processed', 'charge.refunded'].includes(eventType)) {
     console.log(`Handling refund for transaction: ${reference}`);
     const { data: refundedPurchase, error: refundFetchError } = await supabase
@@ -78,7 +100,7 @@ export async function POST(req: NextRequest) {
 
     if (['refund.failed', 'charge.refund.failed'].includes(eventType)) {
       console.warn(`Refund failed for ${reference}`);
-      // Optional: Insert into failed_refund_logs or alert devs
+
       return NextResponse.json({ message: 'Refund failed' }, { status: 200 });
     }
 
@@ -174,7 +196,7 @@ export async function POST(req: NextRequest) {
       console.error(
         `All ${maxRetries} quota application attempts failed for transaction: ${reference}`,
       );
-      // Optionally: insert into a "failed_quota_attempts" table for support visibility
+
       const { error: logError } = await supabase.from('quota_logs').insert({
         user_id,
         amount: credits,

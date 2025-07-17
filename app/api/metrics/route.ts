@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
-import { DateTime } from 'luxon';
-
 export async function GET(req: NextRequest) {
   try {
     // ---------------- Extract Bearer Token
@@ -28,29 +26,8 @@ export async function GET(req: NextRequest) {
       },
     );
 
-    // ---------------- Get User
-    const {
-      data: { user },
-      error,
-    } = await supabase.auth.getUser();
-
-    if (!user || error) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // ---------------- Time Logic
-    const eatNow = DateTime.now().setZone('Africa/Nairobi');
-    const eatTodayStart = eatNow.startOf('day');
-    const todayUtcIso = eatTodayStart.toUTC().toISO();
-
     // ---------------- Delivery Counts
-    const { data, error: countError } = await supabase.rpc(
-      'get_delivery_counts',
-      {
-        p_user_id: user.id,
-        p_today_utc: todayUtcIso,
-      },
-    );
+    const { data, error: countError } = await supabase.rpc('get_message_stats');
 
     if (countError) {
       console.error('❌ Failed to fetch delivery counts:', countError.message);
@@ -65,9 +42,8 @@ export async function GET(req: NextRequest) {
 
     // ---------------- Scheduled Messages
     const { data: scheduledMessages, error: scheduledError } =
-      await supabase.rpc('get_scheduled_messages_with_groups', {
-        p_user_id: user.id,
-        p_limit: 5,
+      await supabase.rpc('get_group_scheduled_messages', {
+        p_limit: 10,
       });
 
     if (scheduledError) {
