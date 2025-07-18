@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
     try {
       messageRow = await insertMessage({
         supabase,
+        user_id: user.id,
         message,
         scheduledAt,
         groupContacts,

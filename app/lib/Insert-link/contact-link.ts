@@ -13,12 +13,14 @@ export type MessageRow = {
 
 export async function insertMessage({
   supabase,
+  user_id,
   message,
   scheduledAt,
   groupContacts,
   to_number,
 }: {
   supabase: SupabaseClient;
+  user_id: string;
   message: string;
   scheduledAt?: string;
   groupContacts: GroupContact[];
@@ -32,6 +34,7 @@ export async function insertMessage({
       }));
 
       const { data, error } = await supabase.rpc('insert_message_with_groups', {
+        p_uid: user_id,
         p_message: message,
         p_status: scheduledAt ? 'scheduled' : 'queued',
         p_scheduled_at: scheduledAt
@@ -65,6 +68,7 @@ export async function insertMessage({
         .from('messages')
         .insert([
           {
+            user_id,
             to_number,
             message,
             status: scheduledAt ? 'scheduled' : 'queued',
