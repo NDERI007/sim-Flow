@@ -7,6 +7,7 @@ import { validateCronSecret } from '../../lib/validateCRON';
 import { prepareRecipients } from '../../lib/prepareRE/receipients';
 import { notifyQuotaFailure } from '../../lib/Notify/QuotaLow';
 
+// Redis and BullMQ setup
 const connection = new Redis(process.env.REDIS_URL!, {
   tls: {},
   maxRetriesPerRequest: null,
@@ -14,13 +15,15 @@ const connection = new Redis(process.env.REDIS_URL!, {
 const flowProducer = new FlowProducer({ connection });
 const BATCH_SIZE = 500;
 
+// Type definition for the data returned by our new RPC
 type ScheduledMessage = {
   id: string;
   user_id: string;
   message: string;
   to_number: string[] | null;
-  scheduled_at: string; // or `Date` if you parse it
-  contact_group_ids: string[]; // aggregated from message_contacts
+  scheduled_at: string;
+  contact_group_ids: string[];
+  // Internal properties added during processing
   _segments?: number;
   _recipients?: {
     allPhones: string[];
@@ -38,6 +41,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
+  // Initialize Supabase client with the service role key
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -47,42 +51,30 @@ export async function GET(req: Request) {
   );
 
   try {
-    const { data: userRows, error: userError } = await supabase
-      .from('messages')
-      .select('user_id')
-      .eq('status', 'scheduled')
-      .lte('scheduled_at', new Date().toISOString())
-      .neq('user_id', null)
+    // ==================================================================
+    // 1. EFFICIENT DATA FETCH: Call the new RPC to get all due messages at once.
+    // This replaces the failing select('user_id') and the inefficient loop.
+    // ==================================================================
+    const { data: allMessages, error: rpcError } = await supabase
+      .rpc('get_all_due_messages') // Using the new, efficient function
       .abortSignal(controller.signal);
 
-    if (userError) {
-      console.error('❌ Failed to fetch userIds:', userError.message);
+    if (rpcError) {
+      console.error('❌ Failed to fetch due messages via RPC:', rpcError);
       return NextResponse.json(
-        { message: 'Failed to fetch user IDs' },
+        { message: 'Failed to fetch scheduled messages' },
         { status: 500 },
       );
     }
 
-    const userIds = [...new Set((userRows ?? []).map((row) => row.user_id))];
-    if (userIds.length === 0) {
+    if (!allMessages || allMessages.length === 0) {
       return NextResponse.json({ message: 'No scheduled messages found' });
     }
 
-    const allMessages: ScheduledMessage[] = [];
-    for (const user_id of userIds) {
-      const { data: messages, error: msgError } = await supabase
-        .rpc('get_scheduled_messages', { p_user_id: user_id })
-        .abortSignal(controller.signal);
-
-      if (msgError) {
-        console.error(`❌ RPC failed for user ${user_id}:`, msgError.message);
-        continue;
-      }
-
-      allMessages.push(...(messages || []));
-    }
-
-    // 1. Group messages by user_id
+    // ==================================================================
+    // 2. PROCESS IN MEMORY: The rest of your logic was already great.
+    // It correctly groups messages by user for quota checks.
+    // ==================================================================
     const messageMap: Record<string, ScheduledMessage[]> = {};
     const totalSegmentsPerUser: Record<string, number> = {};
 
@@ -104,7 +96,7 @@ export async function GET(req: Request) {
             id,
             error: err,
           });
-          continue;
+          continue; // Skip this message if contacts fail to load
         }
       }
 
@@ -113,27 +105,30 @@ export async function GET(req: Request) {
           manualNumbers: to_number,
           groupContacts,
           message,
-          devMode: true,
+          devMode: true, // Assuming this is intentional
         });
 
+      // Initialize user-specific maps if this is the first message for the user
       if (!messageMap[user_id]) {
         messageMap[user_id] = [];
         totalSegmentsPerUser[user_id] = 0;
       }
 
+      // Attach calculated data to the message object for later use
       msg._recipients = { allPhones, totalRecipients, segmentsPerMessage };
       msg._segments = totalSegments;
 
+      // Aggregate total segments required for this user
       totalSegmentsPerUser[user_id] += totalSegments;
       messageMap[user_id].push(msg);
     }
 
-    // 2. Run quota check for each user
+    // 3. Run quota check for each user based on the aggregated segment counts
     const quotaMap = new Map();
-
     for (const [user_id, totalSegments] of Object.entries(
       totalSegmentsPerUser,
     )) {
+      // ... (The rest of your quota check logic is unchanged)
       const { data, error } = await supabase.rpc('quota_check', {
         p_uid: user_id,
         p_amount: totalSegments,
@@ -154,13 +149,11 @@ export async function GET(req: Request) {
           `❌ User ${user_id} has insufficient quota:`,
           data?.[0] ?? error,
         );
-
         const { data: userInfo } = await supabase
           .from('users')
           .select('email')
           .eq('id', user_id)
           .single();
-
         if (userInfo?.email) {
           await notifyQuotaFailure({
             email: userInfo.email,
@@ -173,12 +166,14 @@ export async function GET(req: Request) {
       }
     }
 
+    // 4. Process and queue messages for users who have sufficient quota
     let processed = 0;
     for (const [user_id, userMessages] of Object.entries(messageMap)) {
       const quotaResult = quotaMap.get(user_id);
-      if (!quotaResult?.has_quota) continue;
+      if (!quotaResult?.has_quota) continue; // Skip user if they failed the quota check
 
       for (const msg of userMessages) {
+        // ... (The rest of your message processing and queuing logic is unchanged)
         const {
           id,
           message,
@@ -187,8 +182,7 @@ export async function GET(req: Request) {
           _segments,
           _recipients,
         } = msg;
-
-        const { allPhones, totalRecipients, segmentsPerMessage } = _recipients;
+        const { allPhones, totalRecipients, segmentsPerMessage } = _recipients!;
 
         if (totalRecipients === 0 || allPhones.length === 0) {
           console.warn('⚠️ No recipients found for message', { id });
@@ -211,15 +205,9 @@ export async function GET(req: Request) {
           data: {
             message_id: id,
             totalRecipients,
-            metadata: {
-              source: 'cron',
-              scheduled: true,
-            },
+            metadata: { source: 'cron', scheduled: true },
           },
-          opts: {
-            jobId: `flow-${id}`,
-            removeOnComplete: true,
-          },
+          opts: { jobId: `flow-${id}`, removeOnComplete: true },
           children: phoneBatches.map((batch, i) => ({
             name: 'send_sms_batch',
             queueName: 'smsQueue',
@@ -229,10 +217,7 @@ export async function GET(req: Request) {
               to_number: batch,
               contact_map,
               segmentsPerMessage,
-              metadata: {
-                source: 'cron',
-                batchIndex: i,
-              },
+              metadata: { source: 'cron', batchIndex: i },
             },
             opts: {
               jobId: `sms-${id}-batch-${i}`,
@@ -261,7 +246,6 @@ export async function GET(req: Request) {
             error: quotaError.message,
           });
         }
-
         processed++;
       }
     }
@@ -269,8 +253,15 @@ export async function GET(req: Request) {
     return NextResponse.json({ success: true, processed });
   } catch (err) {
     console.error('❌ Cron execution error:', {
-      error: err instanceof Error ? err.message : err,
+      error: err instanceof Error ? err.message : String(err),
     });
+    // Check if the error is due to the abort signal (timeout)
+    if (err instanceof Error && err.name === 'AbortError') {
+      return NextResponse.json(
+        { message: 'Cron job timed out' },
+        { status: 504 },
+      );
+    }
     return NextResponse.json(
       { message: 'Cron job failed', error: String(err) },
       { status: 500 },
