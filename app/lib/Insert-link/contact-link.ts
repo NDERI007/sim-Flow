@@ -1,6 +1,12 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-
+import { DateTime } from 'luxon';
 type GroupContact = { id: string; group_id: string };
+
+function LocalInputToUTC(input: string): string {
+  return DateTime.fromISO(input, { zone: 'Africa/Nairobi' }) // interpret as EAT
+    .toUTC()
+    .toISO(); // convert to UTC ISO string
+}
 
 export type MessageRow = {
   id: string;
@@ -72,9 +78,7 @@ export async function insertMessage({
             to_number,
             message,
             status: scheduledAt ? 'scheduled' : 'queued',
-            scheduled_at: scheduledAt
-              ? new Date(scheduledAt).toISOString()
-              : null,
+            scheduled_at: scheduledAt ? LocalInputToUTC(scheduledAt) : null,
           },
         ])
         .select()
@@ -90,9 +94,7 @@ export async function insertMessage({
             to_number,
             message,
             status: scheduledAt ? 'scheduled' : 'queued',
-            scheduled_at: scheduledAt
-              ? new Date(scheduledAt).toISOString()
-              : null,
+            scheduled_at: scheduledAt ? LocalInputToUTC(scheduledAt) : null,
           },
         });
 
