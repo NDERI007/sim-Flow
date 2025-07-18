@@ -24,9 +24,7 @@ export function useGroupedContacts() {
   } = useSWR(
     'rpc:contacts-with-groups',
     async () => {
-      const { data, error } = await supabase.rpc(
-        'get_user_contacts_with_groups',
-      );
+      const { data, error } = await supabase.rpc('get_group_contacts');
 
       if (error) throw error;
       return data;
@@ -52,7 +50,7 @@ export function useGroupedContacts() {
       }
 
       map.get(row.group_id)!.contacts.push({
-        name: row.name,
+        name: row.contact_name,
         phone: row.phone,
       });
     }
@@ -67,3 +65,11 @@ export function useGroupedContacts() {
 
   return { groups: grouped, error, isLoading };
 }
+
+//For INSERT:
+
+//The row does not yet exist in the table.
+
+//So Postgres can't filter rows with USING (since there's nothing to filter).
+
+//Instead, it uses a WITH CHECK clause to validate that the inserted row meets the policy conditions.
