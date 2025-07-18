@@ -43,9 +43,7 @@ export async function insertMessage({
         p_uid: user_id,
         p_message: message,
         p_status: scheduledAt ? 'scheduled' : 'queued',
-        p_scheduled_at: scheduledAt
-          ? new Date(scheduledAt).toISOString()
-          : null,
+        p_scheduled_at: scheduledAt ? LocalInputToUTC(scheduledAt) : null,
         p_group_contacts: groupContactsPayload,
       });
 
