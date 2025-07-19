@@ -28,7 +28,7 @@ export function validateAndFormatKenyanNumber(
     }
   }
 
-  if (invalid.length > 0) {
+  if (invalid.length > 0 && options?.dev) {
     throw new Error(`Invalid phone number(s): ${invalid.join(', ')}`);
   }
 

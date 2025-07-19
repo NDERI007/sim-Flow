@@ -22,7 +22,7 @@ type ScheduledMessage = {
   message: string;
   to_number: string[] | null;
   scheduled_at: string;
-  contact_group_ids: string[];
+  contact_group_ids: string[] | null;
   // Internal properties added during processing
   _segments?: number;
   _recipients?: {
@@ -30,6 +30,8 @@ type ScheduledMessage = {
     totalRecipients: number;
     segmentsPerMessage: number;
   };
+  // FIX: Add a place to store fetched contacts to avoid re-fetching
+  _groupContacts?: any[];
 };
 
 export async function GET(req: Request) {
@@ -41,7 +43,6 @@ export async function GET(req: Request) {
     return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
   }
 
-  // Initialize Supabase client with the service role key
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
@@ -51,12 +52,8 @@ export async function GET(req: Request) {
   );
 
   try {
-    // ==================================================================
-    // 1. EFFICIENT DATA FETCH: Call the new RPC to get all due messages at once.
-    // This replaces the failing select('user_id') and the inefficient loop.
-    // ==================================================================
     const { data: allMessages, error: rpcError } = await supabase
-      .rpc('get_all_due_messages') // Using the new, efficient function
+      .rpc('get_all_due_messages')
       .abortSignal(controller.signal);
 
     if (rpcError) {
@@ -71,69 +68,78 @@ export async function GET(req: Request) {
       return NextResponse.json({ message: 'No scheduled messages found' });
     }
 
-    // ==================================================================
-    // 2. PROCESS IN MEMORY: The rest of your logic was already great.
-    // It correctly groups messages by user for quota checks.
-    // ==================================================================
     const messageMap: Record<string, ScheduledMessage[]> = {};
     const totalSegmentsPerUser: Record<string, number> = {};
 
+    // In your GET function inside the api/route.ts for the cron job
+
     for (const msg of allMessages) {
-      const {
-        id,
-        user_id,
-        message,
-        to_number = [],
-        contact_group_ids = [],
-      } = msg;
+      // Use a try...catch block for each message to prevent one bad message from crashing the entire job.
+      try {
+        const { id, user_id, message } = msg;
+        const to_number = msg.to_number ?? [];
+        const contact_group_ids = msg.contact_group_ids ?? [];
 
-      let groupContacts = [];
-      if (contact_group_ids.length > 0) {
-        try {
-          groupContacts = await fetchGroupContacts(contact_group_ids);
-        } catch (err) {
-          console.error('❌ Failed to fetch group contacts:', {
-            id,
-            error: err,
-          });
-          continue; // Skip this message if contacts fail to load
+        let groupContacts = [];
+        if (Array.isArray(contact_group_ids) && contact_group_ids.length > 0) {
+          groupContacts = (await fetchGroupContacts(contact_group_ids)) || [];
         }
+
+        // --- START DEBUGGING BLOCK ---
+        let preparedData;
+        try {
+          preparedData = prepareRecipients({
+            manualNumbers: to_number,
+            groupContacts,
+            message,
+            devMode: true,
+          });
+        } catch (err) {
+          console.error(
+            `❌ FATAL ERROR inside prepareRecipients for message ID: ${id}`,
+            err,
+          );
+          // Skip this broken message and move to the next one
+          continue;
+        }
+        // --- END DEBUGGING BLOCK ---
+
+        const {
+          allPhones,
+          totalSegments,
+          totalRecipients,
+          segmentsPerMessage,
+        } = preparedData;
+
+        if (!messageMap[user_id]) {
+          messageMap[user_id] = [];
+          totalSegmentsPerUser[user_id] = 0;
+        }
+
+        msg._recipients = { allPhones, totalRecipients, segmentsPerMessage };
+        msg._segments = totalSegments;
+        msg._groupContacts = groupContacts;
+
+        totalSegmentsPerUser[user_id] += totalSegments;
+        messageMap[user_id].push(msg);
+      } catch (loopError) {
+        console.error(
+          `❌ An unexpected error occurred while processing message: ${msg.id}`,
+          loopError,
+        );
+        continue; // Ensure the main loop continues
       }
-
-      const { allPhones, totalSegments, totalRecipients, segmentsPerMessage } =
-        prepareRecipients({
-          manualNumbers: to_number,
-          groupContacts,
-          message,
-          devMode: true, // Assuming this is intentional
-        });
-
-      // Initialize user-specific maps if this is the first message for the user
-      if (!messageMap[user_id]) {
-        messageMap[user_id] = [];
-        totalSegmentsPerUser[user_id] = 0;
-      }
-
-      // Attach calculated data to the message object for later use
-      msg._recipients = { allPhones, totalRecipients, segmentsPerMessage };
-      msg._segments = totalSegments;
-
-      // Aggregate total segments required for this user
-      totalSegmentsPerUser[user_id] += totalSegments;
-      messageMap[user_id].push(msg);
     }
 
-    // 3. Run quota check for each user based on the aggregated segment counts
+    // 3. Run quota check for each user
     const quotaMap = new Map();
     for (const [user_id, totalSegments] of Object.entries(
       totalSegmentsPerUser,
     )) {
-      // ... (The rest of your quota check logic is unchanged)
       const { data, error } = await supabase.rpc('quota_check', {
         p_uid: user_id,
         p_amount: totalSegments,
       });
-
       quotaMap.set(
         user_id,
         data?.[0] ?? {
@@ -143,7 +149,6 @@ export async function GET(req: Request) {
           reason: 'Unknown error',
         },
       );
-
       if (error || !data?.[0]?.has_quota) {
         console.warn(
           `❌ User ${user_id} has insufficient quota:`,
@@ -170,28 +175,31 @@ export async function GET(req: Request) {
     let processed = 0;
     for (const [user_id, userMessages] of Object.entries(messageMap)) {
       const quotaResult = quotaMap.get(user_id);
-      if (!quotaResult?.has_quota) continue; // Skip user if they failed the quota check
+      if (!quotaResult?.has_quota) continue;
 
       for (const msg of userMessages) {
-        // ... (The rest of your message processing and queuing logic is unchanged)
         const {
           id,
           message,
-          contact_group_ids = [],
           to_number = [],
           _segments,
           _recipients,
+          _groupContacts = [],
         } = msg;
-        const { allPhones, totalRecipients, segmentsPerMessage } = _recipients!;
 
-        if (totalRecipients === 0 || allPhones.length === 0) {
+        // FIX: Safe destructuring of _recipients, avoiding the risky '!'
+        const { allPhones, totalRecipients, segmentsPerMessage } =
+          _recipients || {};
+
+        // FIX: Add null/undefined check for allPhones before accessing .length
+        if (!totalRecipients || !allPhones || allPhones.length === 0) {
           console.warn('⚠️ No recipients found for message', { id });
           continue;
         }
 
         const contact_map = {};
-        const groupContacts = await fetchGroupContacts(contact_group_ids);
-        groupContacts.forEach((c) => (contact_map[c.phone] = c.id));
+        // FIX: Use the stored _groupContacts, do NOT re-fetch
+        _groupContacts.forEach((c) => (contact_map[c.phone] = c.id));
         to_number.forEach((num) => (contact_map[num] = null));
 
         const phoneBatches = [];
@@ -255,7 +263,6 @@ export async function GET(req: Request) {
     console.error('❌ Cron execution error:', {
       error: err instanceof Error ? err.message : String(err),
     });
-    // Check if the error is due to the abort signal (timeout)
     if (err instanceof Error && err.name === 'AbortError') {
       return NextResponse.json(
         { message: 'Cron job timed out' },
