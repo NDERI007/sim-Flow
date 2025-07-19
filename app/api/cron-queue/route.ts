@@ -4,7 +4,7 @@ import Redis from 'ioredis';
 import { FlowProducer } from 'bullmq';
 import { fetchGroupContacts } from '../../lib/fetchContacts/fetchgroup';
 import { validateCronSecret } from '../../lib/validateCRON';
-import { prepareRecipients } from '../../lib/prepareRE/receipients';
+import { Contact, prepareRecipients } from '../../lib/prepareRE/receipients';
 import { notifyQuotaFailure } from '../../lib/Notify/QuotaLow';
 
 // Redis and BullMQ setup
@@ -31,7 +31,7 @@ type ScheduledMessage = {
     segmentsPerMessage: number;
   };
   // FIX: Add a place to store fetched contacts to avoid re-fetching
-  _groupContacts?: any[];
+  _groupContacts?: Contact[];
 };
 
 export async function GET(req: Request) {
