@@ -15,19 +15,19 @@ export default function Home() {
   return (
     <main
       ref={containerRef}
-      className="relative max-h-screen overflow-y-auto scroll-smooth bg-gradient-to-br from-[#1a1c2c] via-[#2e145f] to-[#0f0c29] text-white"
+      className="relative max-h-screen overflow-y-auto scroll-smooth bg-[#1e1b2e] text-white"
     >
       {/* Navigation */}
       <div className="sticky top-0 z-50 flex justify-end gap-4 bg-transparent p-6 backdrop-blur-sm">
         <Link
           href="/login"
-          className="rounded-lg bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-500"
+          className="rounded-xl bg-indigo-500/80 px-5 py-2.5 text-sm font-medium text-white shadow-md backdrop-blur-md transition hover:bg-indigo-400/90"
         >
           Login
         </Link>
         <Link
           href="/register"
-          className="rounded-lg bg-purple-600 px-4 py-2 text-white transition hover:bg-purple-500"
+          className="rounded-xl bg-indigo-500/80 px-5 py-2.5 text-sm font-medium text-white shadow-md backdrop-blur-md transition hover:bg-indigo-400/90"
         >
           Get Started
         </Link>
@@ -52,38 +52,20 @@ export default function Home() {
         </motion.div>
       </motion.div>
       {/* Hero */}
-      <section className="relative z-10 flex h-screen flex-col items-center justify-center text-center">
-        <motion.h1
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={{
-            type: 'tween',
-            duration: 1.2,
-            ease: 'easeOut', // or use [0.25, 0.1, 0.25, 1] for linear-ish smooth
-          }}
-          className="mb-4 max-w-3xl text-5xl font-bold text-purple-300 md:text-6xl"
-        >
-          You Good, Twin?
-        </motion.h1>
-
-        <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.6 }}
-          transition={{
-            type: 'tween',
-            duration: 1,
-            delay: 0.3,
-            ease: 'easeOut',
-          }}
-          className="max-w-xl text-xl text-slate-400 md:text-2xl"
-        >
-          Send bulk sms. Organize contacts. All in one dashboard.
-        </motion.p>
+      <section className="flex min-h-screen items-center justify-center px-6 text-center">
+        <p className="max-w-3xl text-4xl leading-snug font-semibold text-white md:text-6xl">
+          <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+            Send
+          </span>{' '}
+          bulk SMS.{' '}
+          <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
+            Organize
+          </span>{' '}
+          contacts. All in one dashboard.
+        </p>
       </section>
 
-      <footer className="bg-gradient-to-t from-[#0f0c29] to-transparent px-6 py-12 text-center">
+      <footer className="border-t border-[#2a273f] bg-[#1a1929] px-6 py-12 text-center">
         <h2 className="mb-4 text-4xl font-semibold text-purple-200">
           Get in Touch
         </h2>
@@ -95,16 +77,16 @@ export default function Home() {
         <div className="flex flex-col justify-center gap-4 text-white md:flex-row">
           <a
             href="mailto:support@yourdomain.com"
-            className="flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-6 py-3 transition hover:bg-purple-500"
+            className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 transition hover:bg-indigo-500"
           >
             <Mail />
             will do
           </a>
-          <p className="flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-6 py-3 transition hover:bg-purple-500">
+          <p className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 transition hover:bg-indigo-500">
             <Phone size={18} />
             +254 790504636
           </p>
-          <p className="flex items-center justify-center gap-2 rounded-lg bg-purple-600 px-6 py-3 transition hover:bg-purple-500">
+          <p className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 transition hover:bg-indigo-500">
             <Phone size={18} />
             +254 727 942764
           </p>
