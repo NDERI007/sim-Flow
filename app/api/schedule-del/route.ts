@@ -1,22 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
-import Redis from 'ioredis';
-import { Queue } from 'bullmq';
 
 const rateLimitMap = new Map<string, { count: number; last: number }>();
-const WINDOW = 60 * 1000; // 1 minute
+const WINDOW = 60 * 1000;
 const LIMIT = 10;
 
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const entry = rateLimitMap.get(ip);
 
-  if (!entry) {
-    rateLimitMap.set(ip, { count: 1, last: now });
-    return false;
-  }
-
-  if (now - entry.last > WINDOW) {
+  if (!entry || now - entry.last > WINDOW) {
     rateLimitMap.set(ip, { count: 1, last: now });
     return false;
   }
@@ -35,12 +28,6 @@ export async function DELETE(req: NextRequest) {
       { status: 429 },
     );
   }
-  const redis = new Redis(process.env.REDIS_URL!, {
-    tls: {},
-    maxRetriesPerRequest: null,
-  });
-
-  const smsQueue = new Queue('smsQueue', { connection: redis });
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -92,20 +79,6 @@ export async function DELETE(req: NextRequest) {
 
   if (deleteError) {
     return NextResponse.json({ message: 'Failed to delete' }, { status: 500 });
-  }
-
-  //  Remove job from BullMQ
-  try {
-    const job = await smsQueue.getJob(id);
-    if (job) {
-      await job.remove();
-      console.log(`🗑️ Removed BullMQ job for message ${id}`);
-    } else {
-      console.warn(`⚠️ No BullMQ job found for message ${id}`);
-    }
-  } catch (err) {
-    console.error('❌ Failed to delete job from BullMQ:', err);
-    // Not fatal: DB row is already gone
   }
 
   return NextResponse.json({ success: true });

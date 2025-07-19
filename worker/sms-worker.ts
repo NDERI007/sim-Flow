@@ -185,14 +185,11 @@ smsWorker.on('drained', () => {
   console.log('📭 All jobs completed, starting idle shutdown timer...');
   if (idleTimer) clearTimeout(idleTimer);
   idleTimer = setTimeout(async () => {
-    console.log('⏹️ No jobs for 10 minutes. Shutting down worker...');
     try {
-      await smsWorker.close(); // graceful shutdown
-      await redis.quit(); // release Upstash connection
-      process.exit(0);
+      await smsWorker.pause();
+      console.log('⏸️ Worker paused (idle).');
     } catch (err) {
-      console.error('❌ Error during shutdown:', err);
-      process.exit(1);
+      console.error('❌ Error Pausing worker', err);
     }
   }, IDLE_TIMEOUT_MS);
 });
@@ -202,6 +199,11 @@ smsWorker.on('active', () => {
     console.log('📥 New job detected. Cancelling shutdown timer.');
     clearTimeout(idleTimer);
     idleTimer = null;
+  }
+  try {
+    smsWorker.resume();
+  } catch (err) {
+    console.error('❌ Failed to resume worker:', err);
   }
 });
 
