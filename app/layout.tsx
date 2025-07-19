@@ -1,6 +1,7 @@
 'use client';
 import './globals.css';
 import { Inter } from 'next/font/google';
+import { SpeedInsights } from '@vercel/speed-insights/next';
 import CompanyHeader from './components/companyHeader';
 import { usePathname } from 'next/navigation';
 import { AuthWrapper } from './lib/AuthListner';
@@ -35,6 +36,7 @@ export default function RootLayout({
         {showHeader && <CompanyHeader />}
         <AuthWrapper />
         {children}
+        <SpeedInsights />
       </body>
     </html>
   );
