@@ -102,8 +102,6 @@ export async function GET(req: Request) {
           // Skip this broken message and move to the next one
           continue;
         }
-        // --- END DEBUGGING BLOCK ---
-
         const {
           allPhones,
           totalSegments,
