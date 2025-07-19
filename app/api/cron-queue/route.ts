@@ -178,15 +178,15 @@ export async function GET(req: Request) {
       if (!quotaResult?.has_quota) continue;
 
       for (const msg of userMessages) {
-        const {
-          id,
-          message,
-          to_number = [],
-          _segments,
-          _recipients,
-          _groupContacts = [],
-        } = msg;
+        const { id, message, _segments, _recipients } = msg;
 
+        // 1) Coerce both into real arrays:
+        const manualList: string[] = Array.isArray(msg.to_number)
+          ? msg.to_number
+          : [];
+        const groupList: Contact[] = Array.isArray(msg._groupContacts)
+          ? msg._groupContacts
+          : [];
         // FIX: Safe destructuring of _recipients, avoiding the risky '!'
         const { allPhones, totalRecipients, segmentsPerMessage } =
           _recipients || {};
@@ -197,10 +197,9 @@ export async function GET(req: Request) {
           continue;
         }
 
-        const contact_map = {};
-        // FIX: Use the stored _groupContacts, do NOT re-fetch
-        _groupContacts.forEach((c) => (contact_map[c.phone] = c.id));
-        to_number.forEach((num) => (contact_map[num] = null));
+        const contact_map: Record<string, string | null> = {};
+        groupList.forEach((c) => (contact_map[c.phone] = c.id));
+        manualList.forEach((num) => (contact_map[num] = null));
 
         const phoneBatches = [];
         for (let i = 0; i < allPhones.length; i += BATCH_SIZE) {
