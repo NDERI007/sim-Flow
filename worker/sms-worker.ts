@@ -178,33 +178,9 @@ smsWorker.on('failed', async (job, err) => {
     }
   }
 });
-let idleTimer: NodeJS.Timeout | null = null;
-const IDLE_TIMEOUT_MS = 10 * 60 * 1000; // 10 minutes of inactivity
 
 smsWorker.on('drained', () => {
   console.log('📭 All jobs completed, starting idle shutdown timer...');
-  if (idleTimer) clearTimeout(idleTimer);
-  idleTimer = setTimeout(async () => {
-    try {
-      await smsWorker.pause();
-      console.log('⏸️ Worker paused (idle).');
-    } catch (err) {
-      console.error('❌ Error Pausing worker', err);
-    }
-  }, IDLE_TIMEOUT_MS);
-});
-
-smsWorker.on('active', () => {
-  if (idleTimer) {
-    console.log('📥 New job detected. Cancelling shutdown timer.');
-    clearTimeout(idleTimer);
-    idleTimer = null;
-  }
-  try {
-    smsWorker.resume();
-  } catch (err) {
-    console.error('❌ Failed to resume worker:', err);
-  }
 });
 
 console.log('📡 SMS Worker is running...');
@@ -222,4 +198,9 @@ app.get('/ping', (req, res) => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Worker HTTP server listening on port ${PORT}`);
+});
+process.on('SIGINT', async () => {
+  console.log('🛑 Shutting down gracefully...');
+  await smsWorker.close();
+  process.exit(0);
 });
