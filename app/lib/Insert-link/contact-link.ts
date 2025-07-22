@@ -39,13 +39,16 @@ export async function insertMessage({
         group_id,
       }));
 
-      const { data, error } = await supabase.rpc('insert_message_with_groups', {
-        p_uid: user_id,
-        p_message: message,
-        p_status: scheduledAt ? 'scheduled' : 'queued',
-        p_scheduled_at: scheduledAt ? LocalInputToUTC(scheduledAt) : null,
-        p_group_contacts: groupContactsPayload,
-      });
+      const { data, error } = await supabase.rpc(
+        'insert_message_with_contacts',
+        {
+          p_uid: user_id,
+          p_message: message,
+          p_status: scheduledAt ? 'scheduled' : 'queued',
+          p_scheduled_at: scheduledAt ? LocalInputToUTC(scheduledAt) : null,
+          p_group_contacts: groupContactsPayload,
+        },
+      );
 
       if (error || !data?.[0]) {
         console.error('❌ insertMessage RPC Error:', {

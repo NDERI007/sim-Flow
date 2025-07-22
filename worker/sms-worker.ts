@@ -179,20 +179,36 @@ smsWorker.on('failed', async (job, err) => {
   }
 });
 
-smsWorker.on('drained', () => {
-  console.log('📭 All jobs completed, starting idle shutdown timer...');
+// Worker Events
+// ... (completed, failed events) ...
+
+smsWorker.on('drained', async () => {
+  console.log('📭 Queue is drained. Pausing worker...');
+  try {
+    await smsWorker.pause();
+    console.log('✅ Worker paused successfully.');
+  } catch (err) {
+    console.error('❌ Failed to pause worker:', err);
+  }
 });
 
 console.log('📡 SMS Worker is running...');
 
 const app = express();
 
-app.get('/ping', (req, res) => {
+app.get('/ping', async (req, res) => {
   if (!validateCronSecret(req)) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  res.json({ ok: true, message: 'Worker is awake' });
+  try {
+    await smsWorker.resume();
+    console.log('▶️ Worker resumed by API call.');
+    res.json({ ok: true, message: 'Worker resumed' });
+  } catch (err) {
+    console.error('❌ Failed to resume worker:', err);
+    res.status(500).json({ error: 'Failed to resume worker' });
+  }
 });
 
 const PORT = process.env.PORT || 3000;
