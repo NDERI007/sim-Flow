@@ -3,10 +3,9 @@ import Link from 'next/link';
 import { CalendarClock, Send } from 'lucide-react';
 import ScheduledSendsList from '../components/dash-comp/scheduledSends';
 import SummaryCards from '../components/dash-comp/summaryCards';
-import { User } from '@supabase/supabase-js';
 import { withAuthGuard } from '../components/WithAuth';
 
-function Dashboard({ user }: { user: User }) {
+function Dashboard() {
   return (
     <div className="grid grid-cols-1 gap-6 p-4 lg:grid-cols-3">
       {/* Left Column */}
