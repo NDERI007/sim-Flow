@@ -3,8 +3,6 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../lib/supabase';
-
 export default function FinishRegistrationPage() {
   const router = useRouter();
   const [senderId, setSenderId] = useState('');
@@ -18,7 +16,7 @@ export default function FinishRegistrationPage() {
     setLoading(true);
 
     try {
-      const res = await axios.post(
+      await axios.post(
         '/api/complete-registration',
         {
           sender_id: senderId,
