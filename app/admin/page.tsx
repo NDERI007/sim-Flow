@@ -3,10 +3,10 @@ import Link from 'next/link';
 import { CalendarClock, Send } from 'lucide-react';
 import ScheduledSendsList from '../components/dash-comp/scheduledSends';
 import SummaryCards from '../components/dash-comp/summaryCards';
-import { useAuthGuard } from '../lib/useAuthGuard';
+import { User } from '@supabase/supabase-js';
+import { withAuthGuard } from '../components/WithAuth';
 
-export default function Dashboard() {
-  useAuthGuard();
+function Dashboard({ user }: { user: User }) {
   return (
     <div className="grid grid-cols-1 gap-6 p-4 lg:grid-cols-3">
       {/* Left Column */}
@@ -43,3 +43,4 @@ export default function Dashboard() {
     </div>
   );
 }
+export default withAuthGuard(Dashboard);
