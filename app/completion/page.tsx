@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { createClient } from '@supabase/supabase-js';
 export default function FinishRegistrationPage() {
   const router = useRouter();
   const [senderId, setSenderId] = useState('');
@@ -10,13 +11,19 @@ export default function FinishRegistrationPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // ✅ Create client locally — guaranteed clean instance
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  );
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
     try {
-      await axios.post(
+      const res = await axios.post(
         '/api/complete-registration',
         {
           sender_id: senderId,
@@ -26,7 +33,18 @@ export default function FinishRegistrationPage() {
           withCredentials: true,
         },
       );
+      const session = res.data?.session;
 
+      if (session?.access_token && session?.refresh_token) {
+        // Sync client session state
+        const { error: setError } = await supabase.auth.setSession(session);
+        if (setError) throw new Error(setError.message);
+
+        // Navigate after session is hydrated
+        router.push('/admin');
+      } else {
+        throw new Error('No session returned.');
+      }
       // Navigate after session is hydrated
       router.push('/admin');
     } catch (err: unknown) {
