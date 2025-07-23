@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-
+import { supabase } from '../lib/createSupcl';
 import { User } from '@supabase/supabase-js';
-import { createClient } from '@supabase/supabase-js';
 
 type WithAuthGuardOptions = {
   redirectTo?: string;
@@ -19,11 +18,6 @@ export function withAuthGuard<P>(
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<User | null>(null);
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    );
 
     useEffect(() => {
       const checkAuth = async () => {
