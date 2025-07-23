@@ -63,7 +63,8 @@ export const useAuthStore = create<AuthState>()(
 
       fetchUserProfile: async () => {
         const { user, userName } = get();
-        if (!user || userName) return;
+        if (!user || (typeof userName === 'string' && userName.trim() !== ''))
+          return;
 
         const { data } = await supabase
           .from('users')
