@@ -21,9 +21,9 @@ export default function RootLayout({
 
   const HideHeaderOn = [
     '/login',
-    'register',
-    'completion',
-    'verify',
+    '/register',
+    '/completion',
+    '/verify',
     '/',
     '/admin',
     '/forgot-password',

@@ -29,18 +29,8 @@ export default function FinishRegistrationPage() {
         },
       );
 
-      const session = res.data?.session;
-
-      if (session?.access_token && session?.refresh_token) {
-        // Sync client session state
-        const { error: setError } = await supabase.auth.setSession(session);
-        if (setError) throw new Error(setError.message);
-
-        // Navigate after session is hydrated
-        router.push('/admin');
-      } else {
-        throw new Error('No session returned.');
-      }
+      // Navigate after session is hydrated
+      router.push('/admin');
     } catch (err: unknown) {
       const message = axios.isAxiosError(err)
         ? err.response?.data?.error || err.message
