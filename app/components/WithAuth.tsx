@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { User } from '@supabase/supabase-js';
-import { supabase } from '../lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 type WithAuthGuardOptions = {
   redirectTo?: string;
@@ -20,9 +20,14 @@ export function withAuthGuard<P>(
     const [loading, setLoading] = useState(true);
     const [user, setUser] = useState<User | null>(null);
 
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    );
+
     useEffect(() => {
       const checkAuth = async () => {
-        // 👇 Hydrate session from cookies
+        // Hydrate session from cookies
         const {
           data: { session },
           error: sessionError,

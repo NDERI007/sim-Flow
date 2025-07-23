@@ -11,7 +11,6 @@ export default function FinishRegistrationPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // ✅ Create client locally — guaranteed clean instance
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -45,8 +44,6 @@ export default function FinishRegistrationPage() {
       } else {
         throw new Error('No session returned.');
       }
-      // Navigate after session is hydrated
-      router.push('/admin');
     } catch (err: unknown) {
       const message = axios.isAxiosError(err)
         ? err.response?.data?.error || err.message
