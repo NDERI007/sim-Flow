@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { supabase } from './supabase'; // your Supabase client
+import { supabase } from './supabase';
 import type { User } from '@supabase/supabase-js';
 
 interface AuthState {
@@ -29,16 +29,10 @@ export const useAuthStore = create<AuthState>()(
       initialized: false,
 
       getUser: async () => {
-        const state = get();
-
-        if (state.user && state.accessToken && state.userName) {
-          set({ initialized: true });
-          return;
-        }
-
+        const { userName } = get();
         set({ loading: true, error: null });
 
-        const { data, error } = await supabase.auth.getSession(); //
+        const { data, error } = await supabase.auth.getSession();
 
         if (error || !data.session) {
           set({
@@ -57,14 +51,16 @@ export const useAuthStore = create<AuthState>()(
             error: null,
             initialized: true,
           });
-          await get().fetchUserProfile();
+
+          if (!userName) {
+            await get().fetchUserProfile();
+          }
         }
       },
 
       fetchUserProfile: async () => {
-        const { user, userName } = get();
-        if (!user || (typeof userName === 'string' && userName.trim() !== ''))
-          return;
+        const { user } = get();
+        if (!user) return;
 
         const { data } = await supabase
           .from('users')
@@ -87,6 +83,8 @@ export const useAuthStore = create<AuthState>()(
             accessToken: null,
             userName: null,
             error: null,
+            initialized: false,
+            hydrated: false,
           });
         }
       },
@@ -101,23 +99,15 @@ export const useAuthStore = create<AuthState>()(
       storage:
         typeof window !== 'undefined'
           ? {
-              getItem: (name) =>
-                Promise.resolve(
-                  JSON.parse(window.localStorage.getItem(name) || 'null'),
-                ),
-              setItem: (name, value) => {
-                window.localStorage.setItem(name, JSON.stringify(value));
-              },
-              removeItem: (name) => {
-                window.localStorage.removeItem(name);
-              },
+              getItem: async (name) =>
+                JSON.parse(localStorage.getItem(name) || 'null'),
+              setItem: async (name, value) =>
+                localStorage.setItem(name, JSON.stringify(value)),
+              removeItem: async (name) => localStorage.removeItem(name),
             }
           : undefined,
-      // SSR-safe
       onRehydrateStorage: () => () => {
-        // Called after rehydration
-        const set = useAuthStore.getState().hydrated;
-        if (!set) useAuthStore.setState({ hydrated: true });
+        useAuthStore.setState({ hydrated: true });
       },
     },
   ),
