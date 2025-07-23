@@ -1,17 +1,11 @@
 'use client';
 
-import { createBrowserClient } from '@supabase/ssr';
+import { supabase } from '../lib/supabase';
 import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function LogOutButton() {
   const router = useRouter();
-
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-
   const handleLogOut = async () => {
     await supabase.auth.signOut();
     router.push('/login');

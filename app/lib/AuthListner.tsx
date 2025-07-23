@@ -8,34 +8,33 @@ export function AuthWrapper() {
   const getUser = useAuthStore((s) => s.getUser);
   const hydrated = useAuthStore((s) => s.hydrated);
 
-  // Fetch current session once Zustand is ready
+  // Only run getUser when Zustand rehydrates
   useEffect(() => {
     if (hydrated) {
       getUser();
     }
   }, [hydrated, getUser]);
 
-  // Listen to auth state changes
+  // Handle auth state changes (login, refresh, logout)
   useEffect(() => {
     const { data: subscription } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log(`Auth event: ${event}`);
+        console.log(`🔄 Auth event: ${event}`);
 
         if (session) {
           useAuthStore.setState({
             user: session.user,
             accessToken: session.access_token,
-            userName: null,
           });
 
+          // Refetch profile (now includes polling fallback)
           await getUser();
         } else {
+          // Clear all state
           useAuthStore.setState({
             user: null,
             accessToken: null,
-            userName: null,
             initialized: false,
-            hydrated: false,
           });
         }
       },

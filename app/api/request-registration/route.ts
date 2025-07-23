@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '../../lib/createSupcl';
 import { Resend } from 'resend';
 import { DateTime } from 'luxon';
 import { NextRequest, NextResponse } from 'next/server';
@@ -6,11 +6,6 @@ import { NextRequest, NextResponse } from 'next/server';
 const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-  );
-
   const { email: rawEmail, name: rawName } = await req.json();
 
   const email = rawEmail?.trim().toLowerCase();
@@ -95,7 +90,7 @@ export async function POST(req: NextRequest) {
         <p>Hello ${name},</p>
         <p>Your OTP is:</p>
         <h2>${otp}</h2>
-        <a href="${process.env.NEXT_PUBLIC_BASE_URL}/verify?email=${encodeURIComponent(email)}" target="_blank">Complete Registration</a>
+        <a href="http://localhost:3000/verify?email=${encodeURIComponent(email)}" target="_blank">Complete Registration</a>
   
         <p>It will expire at <strong>${eatExpiry.toFormat('hh:mm a')} EAT</strong>.</p>
         <p>If you didn’t request this, you can ignore this email.</p>

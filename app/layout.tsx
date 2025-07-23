@@ -28,6 +28,7 @@ export default function RootLayout({
     '/admin',
     '/forgot-password',
     '/reset-password',
+    '/unAuth',
   ];
   const showHeader = !HideHeaderOn.includes(pathname);
   return (

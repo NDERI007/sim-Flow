@@ -5,14 +5,30 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import LogOutButton from './LogOut';
-
 import { useAuthStore } from '../lib/AuthStore';
+import { supabase } from '../lib/createSupcl';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const userName = useAuthStore((state) => state.userName);
+  const user = useAuthStore((s) => s.user);
+  const [name, setName] = useState<string | null>(null);
 
+  useEffect(() => {
+    const fetchName = async () => {
+      if (user) {
+        const { data } = await supabase
+          .from('users')
+          .select('name')
+          .eq('id', user.id)
+          .single();
+
+        if (data?.name) setName(data.name);
+      }
+    };
+
+    fetchName();
+  }, [user]);
   const navItems = [
     { href: '/Reports', label: 'Delivery Reports' },
     { href: '/contacts', label: 'Contact groups' },
@@ -70,7 +86,7 @@ export default function AdminSidebar() {
         <div className="mb-6 flex items-center justify-between md:hidden">
           <div className="text-semibold mb-4 rounded-lg p-3 text-gray-200 shadow">
             Welcome back,{' '}
-            <span className="font-semibold text-white">{userName}</span>!
+            <span className="font-semibold text-white">{name}</span>!
           </div>
 
           <button onClick={() => setIsOpen(false)} aria-label="Close sidebar">
@@ -80,8 +96,8 @@ export default function AdminSidebar() {
 
         {/* Only show heading on md+ */}
         <div className="mb-6 hidden text-xl font-bold text-gray-200 md:block">
-          Welcome back,{' '}
-          <span className="font-semibold text-white">{userName}</span>!
+          Welcome back, <span className="font-semibold text-white">{name}</span>
+          !
         </div>
 
         <LogOutButton />
