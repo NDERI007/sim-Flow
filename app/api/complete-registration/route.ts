@@ -1,8 +1,30 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
-import { supabase } from '../../lib/createSupcl';
+import { createServerClient } from '@supabase/ssr';
 
 export async function POST(req: NextRequest) {
+  const res = NextResponse.json(
+    {
+      success: true,
+    },
+    { status: 200 },
+  );
+
+  const supabase = createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll: () => req.cookies.getAll(),
+        setAll: (cookies) => {
+          cookies.forEach((cookie) =>
+            res.cookies.set(cookie.name, cookie.value, cookie.options),
+          );
+        },
+      },
+    },
+  );
+
   const { password, sender_id } = await req.json().catch(() => ({}));
   const token = req.cookies.get('verify_token')?.value;
 
@@ -75,14 +97,6 @@ export async function POST(req: NextRequest) {
 
   // Delete pending registration
   await supabase.from('pending_registrations').delete().eq('id', pending.id);
-
-  const res = NextResponse.json({
-    success: true,
-    session: {
-      access_token: auth.session.access_token,
-      refresh_token: auth.session.refresh_token,
-    },
-  });
 
   // ✅ Set sb-access-token and sb-refresh-token
   res.cookies.set('sb-access-token', auth.session.access_token, {

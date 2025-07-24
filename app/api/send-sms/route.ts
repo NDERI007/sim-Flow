@@ -1,5 +1,4 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import Redis from 'ioredis';
 import { FlowProducer } from 'bullmq';
 import { prepareRecipients } from '../../lib/prepareRE/receipients';
@@ -8,6 +7,7 @@ import {
   insertMessage,
   type MessageRow,
 } from '../../lib/Insert-link/contact-link';
+import { ServerClient } from '../../lib/supabase/server';
 
 // Redis & BullMQ setup
 const connection = new Redis(process.env.REDIS_URL!, {
@@ -18,29 +18,9 @@ const flowProducer = new FlowProducer({ connection });
 const BATCH_SIZE = 500;
 
 export async function POST(req: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = ServerClient(req, res);
   try {
-    const rawAuth = req.headers.get('authorization');
-    const token = rawAuth?.toLowerCase().startsWith('bearer ')
-      ? rawAuth.slice(7)
-      : null;
-
-    if (!token) {
-      console.warn('⚠️ Missing or malformed Authorization header');
-      return NextResponse.json(
-        { message: 'Missing or invalid token' },
-        { status: 401 },
-      );
-    }
-
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: { headers: { Authorization: `Bearer ${token}` } },
-        auth: { persistSession: false },
-      },
-    );
-
     const {
       data: { user },
       error,
@@ -77,7 +57,7 @@ export async function POST(req: NextRequest) {
     let groupContacts = [];
     if (Array.isArray(contact_group_ids) && contact_group_ids.length > 0) {
       try {
-        groupContacts = await fetchGroupContacts(contact_group_ids, token);
+        groupContacts = await fetchGroupContacts(supabase, contact_group_ids);
       } catch (err) {
         console.error('❌ fetchGroupContacts failed:', {
           error: err instanceof Error ? err.message : err,

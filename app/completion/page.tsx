@@ -28,17 +28,11 @@ export default function FinishRegistrationPage() {
           withCredentials: true,
         },
       );
-      const session = res.data?.session;
 
-      if (session?.access_token && session?.refresh_token) {
-        // Sync client session state
-        const { error: setError } = await supabase.auth.setSession(session);
-        if (setError) throw new Error(setError.message);
-
-        // Navigate after session is hydrated
+      if (res.status === 200) {
         router.push('/admin');
       } else {
-        throw new Error('No session returned.');
+        throw new Error(res.data?.error || 'Registration Failed');
       }
     } catch (err: unknown) {
       const message = axios.isAxiosError(err)

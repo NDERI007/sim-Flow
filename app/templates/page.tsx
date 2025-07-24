@@ -10,7 +10,6 @@ import {
 } from '../lib/templates';
 import TemplateForm from '../components/template/templateForm';
 import TemplateCard from '../components/template/templateCard';
-
 import { useAuthStore } from '../lib/AuthStore';
 
 type Template = {
@@ -20,7 +19,6 @@ type Template = {
 };
 
 export default function TemplatesPage() {
-  const accessToken = useAuthStore((s) => s.accessToken);
   const initialized = useAuthStore((s) => s.initialized);
   const [loading, setLoading] = useState(false);
 
@@ -28,17 +26,14 @@ export default function TemplatesPage() {
     data: templates = [],
     mutate,
     isLoading: templatesLoading,
-  } = useSWR(
-    accessToken && initialized ? ['templates', accessToken] : null,
-    ([, token]) => fetchTemplates(token),
-    { revalidateOnFocus: false },
-  );
+  } = useSWR(initialized ? 'templates' : null, fetchTemplates, {
+    revalidateOnFocus: false,
+  });
 
   const handleCreate = async (name: string, content: string) => {
-    if (!accessToken) return;
     setLoading(true);
     try {
-      await createTemplate(accessToken, { name, content });
+      await createTemplate({ name, content });
       await mutate();
     } finally {
       setLoading(false);
@@ -46,10 +41,9 @@ export default function TemplatesPage() {
   };
 
   const handleUpdate = async (id: string, name: string, content: string) => {
-    if (!accessToken) return;
     setLoading(true);
     try {
-      await updateTemplate(accessToken, id, { name, content });
+      await updateTemplate(id, { name, content });
       await mutate();
     } finally {
       setLoading(false);
@@ -57,10 +51,9 @@ export default function TemplatesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!accessToken) return;
     setLoading(true);
     try {
-      await deleteTemplate(accessToken, id);
+      await deleteTemplate(id);
       await mutate();
     } finally {
       setLoading(false);

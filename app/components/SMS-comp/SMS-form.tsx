@@ -5,7 +5,6 @@ import ContactGroupSelector from './ContactSelcector';
 import axios from 'axios';
 import { CalendarClock } from 'lucide-react';
 import { useSmsStore } from '../../lib/smsStore';
-
 import { fetchTemplates } from '../../lib/templates';
 import useSWR from 'swr';
 import { useAuthStore } from '../../lib/AuthStore';
@@ -20,17 +19,14 @@ export default function SmsForm() {
     setMessage,
     resetForm,
   } = useSmsStore();
-  const accessToken = useAuthStore((s) => s.accessToken);
   const initialized = useAuthStore((s) => s.initialized);
   const {
     data: templates = [],
     isLoading: loadingTemplates,
     error: templatesError,
-  } = useSWR(
-    accessToken && initialized ? ['templates', accessToken] : null,
-    ([, token]) => fetchTemplates(token),
-    { revalidateOnFocus: false },
-  );
+  } = useSWR(initialized ? 'templates' : null, fetchTemplates, {
+    revalidateOnFocus: false,
+  });
 
   const [loading, setLoading] = useState(false);
   const [feedback, setFeedback] = useState('');
@@ -59,21 +55,12 @@ export default function SmsForm() {
     setFeedback('');
 
     try {
-      const res = await axios.post(
-        '/api/send-sms',
-        {
-          to_number: manualList,
-          message,
-          scheduledAt: scheduledAt || null,
-          contact_group_ids:
-            contactGroupIDs.length > 0 ? contactGroupIDs : null,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
+      const res = await axios.post('/api/send-sms', {
+        to_number: manualList,
+        message,
+        scheduledAt: scheduledAt || null,
+        contact_group_ids: contactGroupIDs.length > 0 ? contactGroupIDs : null,
+      });
 
       if (res.status !== 200) {
         throw new Error(res.data?.error || 'Failed to send SMS');

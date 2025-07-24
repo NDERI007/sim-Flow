@@ -4,19 +4,13 @@ import { motion } from 'framer-motion';
 import { Trash2 } from 'lucide-react';
 import { DateTime } from 'luxon';
 import axios from 'axios';
-import { useMetrics } from '../../lib/metrics';
+import { useScheduledMessages } from '../../lib/scheduleSWR';
 
 interface ScheduledMessage {
   id: string;
   message: string;
   scheduled_at: string;
   group_names?: string[] | null;
-}
-
-interface MetricsData {
-  sentToday: number;
-  scheduledCount: number;
-  scheduled: ScheduledMessage[];
 }
 
 const groupByDate = (messages: ScheduledMessage[]) => {
@@ -38,7 +32,7 @@ const groupByDate = (messages: ScheduledMessage[]) => {
 };
 
 export default function ScheduledSendsList() {
-  const { scheduled, mutate } = useMetrics();
+  const { scheduled, mutate, isLoading } = useScheduledMessages();
 
   const handleDelete = async (id: string) => {
     const confirm = window.confirm(
@@ -47,22 +41,18 @@ export default function ScheduledSendsList() {
     if (!confirm) return;
 
     mutate(
-      async (currentData: MetricsData | undefined): Promise<MetricsData> => {
-        if (!currentData) throw new Error('No data to update');
+      async (currentData?: { scheduled: ScheduledMessage[] }) => {
         await axios.delete('/api/schedule-del', { data: { id } });
         return {
-          ...currentData,
-          scheduled: currentData.scheduled.filter((msg) => msg.id !== id),
+          scheduled:
+            currentData?.scheduled.filter((msg) => msg.id !== id) ?? [],
         };
       },
       {
-        optimisticData: (currentData) => {
-          if (!currentData) return undefined;
-          return {
-            ...currentData,
-            scheduled: currentData.scheduled.filter((msg) => msg.id !== id),
-          };
-        },
+        optimisticData: (currentData) => ({
+          scheduled:
+            currentData?.scheduled.filter((msg) => msg.id !== id) ?? [],
+        }),
         rollbackOnError: true,
         populateCache: true,
         revalidate: false,
@@ -74,6 +64,10 @@ export default function ScheduledSendsList() {
 
   return (
     <div className="rounded-xl bg-slate-950 p-4 text-gray-300 md:p-6">
+      {isLoading && (
+        <p className="text-sm text-gray-500">Loading scheduled messages...</p>
+      )}
+
       {Object.entries(grouped).map(([label, items]) => (
         <div key={label} className="mb-6">
           <p className="mb-3 text-sm font-semibold text-gray-400">{label}</p>
@@ -95,7 +89,6 @@ export default function ScheduledSendsList() {
 
                     <div className="flex items-center justify-between text-xs text-gray-500">
                       <span>
-                        {' '}
                         {DateTime.fromISO(item.scheduled_at)
                           .setZone('Africa/Nairobi')
                           .toFormat('hh:mm a')}
@@ -126,7 +119,7 @@ export default function ScheduledSendsList() {
         </div>
       ))}
 
-      {scheduled.length === 0 && (
+      {scheduled.length === 0 && !isLoading && (
         <p className="text-sm text-gray-500">No upcoming scheduled messages.</p>
       )}
     </div>

@@ -19,18 +19,15 @@ export default function RootLayout({
 }) {
   const pathname = usePathname();
 
-  const HideHeaderOn = [
-    '/login',
-    '/register',
-    '/completion',
-    '/verify',
-    '/',
-    '/admin',
-    '/forgot-password',
-    '/reset-password',
-    '/unAuth',
+  const HeaderOn = [
+    '/send',
+    '/purchase',
+    '/contacts',
+    '/Reports',
+    '/Quota-Usage',
+    '/templates',
   ];
-  const showHeader = !HideHeaderOn.includes(pathname);
+  const showHeader = HeaderOn.includes(pathname);
   return (
     <html lang="en">
       <body className={`${inter.className} bg-white text-gray-900`}>

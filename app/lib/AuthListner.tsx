@@ -5,43 +5,48 @@ import { supabase } from './supabase';
 import { useAuthStore } from './AuthStore';
 
 export function AuthWrapper() {
-  const getUser = useAuthStore((s) => s.getUser);
-  const hydrated = useAuthStore((s) => s.hydrated);
-
-  // Only run getUser when Zustand rehydrates
   useEffect(() => {
-    if (hydrated) {
-      getUser();
-    }
-  }, [hydrated, getUser]);
+    const { setState, getState } = useAuthStore;
 
-  // Handle auth state changes (login, refresh, logout)
-  useEffect(() => {
+    // Initial hydration
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      const user = session?.user ?? null;
+      setState({
+        user,
+        accessToken: session?.access_token ?? null,
+        initialized: true,
+        hydrated: true,
+        error: null,
+        lastAuthAt: user?.last_sign_in_at,
+      });
+    });
+
     const { data: subscription } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log(`🔄 Auth event: ${event}`);
+      (event, session) => {
+        console.log('Auth event:', event);
 
-        if (session) {
-          useAuthStore.setState({
-            user: session.user,
-            accessToken: session.access_token,
-          });
+        const user = session?.user ?? null;
+        const newUserId = user?.id ?? null;
+        const prevUserId = getState().user?.id ?? null;
 
-          // Refetch profile (now includes polling fallback)
-          await getUser();
-        } else {
-          // Clear all state
-          useAuthStore.setState({
-            user: null,
-            accessToken: null,
-            initialized: false,
-          });
+        // Avoid redundant state updates for same user
+        if (event === 'SIGNED_IN' && newUserId === prevUserId) {
+          console.log('ignored redundant SIGNED_IN');
+          return;
         }
+
+        setState({
+          user,
+          accessToken: session?.access_token ?? null,
+          initialized: true,
+          hydrated: true,
+          error: null,
+        });
       },
     );
 
-    return () => subscription.subscription.unsubscribe();
-  }, [getUser]);
+    return () => subscription?.subscription?.unsubscribe?.();
+  }, []);
 
   return null;
 }

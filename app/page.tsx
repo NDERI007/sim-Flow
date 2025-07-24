@@ -38,7 +38,7 @@ export default function Home() {
 
       {/* Hero */}
       <section className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-6 text-center">
-        <p className="max-w-3xl text-4xl leading-snug font-semibold text-white md:text-6xl">
+        <h1 className="max-w-3xl text-[clamp(2.5rem,6vw,4rem)] leading-snug font-semibold text-white">
           <span className="bg-gradient-to-r from-purple-400 to-pink-500 bg-clip-text text-transparent">
             Send
           </span>{' '}
@@ -47,7 +47,7 @@ export default function Home() {
             Organize
           </span>{' '}
           contacts. All in one dashboard.
-        </p>
+        </h1>
       </section>
 
       {/* Parallax Background */}

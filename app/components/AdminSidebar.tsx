@@ -5,30 +5,11 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Menu, X } from 'lucide-react';
 import LogOutButton from './LogOut';
-import { useAuthStore } from '../lib/AuthStore';
-import { supabase } from '../lib/createSupcl';
 
 export default function AdminSidebar() {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
-  const user = useAuthStore((s) => s.user);
-  const [name, setName] = useState<string | null>(null);
 
-  useEffect(() => {
-    const fetchName = async () => {
-      if (user) {
-        const { data } = await supabase
-          .from('users')
-          .select('name')
-          .eq('id', user.id)
-          .single();
-
-        if (data?.name) setName(data.name);
-      }
-    };
-
-    fetchName();
-  }, [user]);
   const navItems = [
     { href: '/Reports', label: 'Delivery Reports' },
     { href: '/contacts', label: 'Contact groups' },
@@ -37,7 +18,7 @@ export default function AdminSidebar() {
     { href: '/Quota-Usage', label: 'Quota Usage' },
   ];
 
-  // Lock body scroll on mobile sidebar open
+  // Lock scroll
   useEffect(() => {
     document.body.style.overflow = isOpen ? 'hidden' : '';
     return () => {
@@ -45,7 +26,7 @@ export default function AdminSidebar() {
     };
   }, [isOpen]);
 
-  // Close sidebar on ESC
+  // Close on ESC
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setIsOpen(false);
@@ -78,45 +59,44 @@ export default function AdminSidebar() {
         role="dialog"
         aria-modal="true"
         aria-label="Sidebar Navigation"
-        className={`fixed top-0 left-0 z-50 h-screen w-64 transform bg-slate-950 p-6 text-gray-300 shadow-lg transition-transform duration-300 md:block md:translate-x-0 ${
+        className={`fixed top-0 left-0 z-50 flex h-screen w-64 flex-col justify-between bg-slate-950 p-6 text-gray-300 shadow-lg transition-transform duration-300 md:block md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        {/* Close Button */}
-        <div className="mb-6 flex items-center justify-between md:hidden">
-          <div className="text-semibold mb-4 rounded-lg p-3 text-gray-200 shadow">
-            Welcome back,{' '}
-            <span className="font-semibold text-white">{name}</span>!
-          </div>
-
-          <button onClick={() => setIsOpen(false)} aria-label="Close sidebar">
-            <X className="h-6 w-6 text-white" />
+        {/* Top Section */}
+        <div>
+          {/* Close Button (visible on mobile only) */}
+          <button
+            className="mb-4 block text-white md:hidden"
+            onClick={() => setIsOpen(false)}
+            aria-label="Close sidebar"
+          >
+            <X className="h-6 w-6" />
           </button>
+
+          {/* Navigation */}
+          <nav className="space-y-3">
+            {navItems.map(({ label, href }) => (
+              <Link
+                key={href}
+                href={href}
+                className={`block rounded-lg px-3 py-2 transition ${
+                  pathname === href
+                    ? 'bg-pink-900 font-semibold text-white'
+                    : 'hover:bg-white/10'
+                }`}
+                onClick={() => setIsOpen(false)} // Close on navigation
+              >
+                {label}
+              </Link>
+            ))}
+          </nav>
         </div>
 
-        {/* Only show heading on md+ */}
-        <div className="mb-6 hidden text-xl font-bold text-gray-200 md:block">
-          Welcome back, <span className="font-semibold text-white">{name}</span>
-          !
+        {/* Bottom Section - Log Out */}
+        <div className="mt-6">
+          <LogOutButton />
         </div>
-
-        <LogOutButton />
-        <nav className="mt-4 space-y-3">
-          {navItems.map(({ label, href }) => (
-            <Link
-              key={href}
-              href={href}
-              className={`block rounded-lg px-3 py-2 transition ${
-                pathname === href
-                  ? 'bg-pink-900 font-semibold text-white'
-                  : 'hover:bg-white/10'
-              }`}
-              onClick={() => setIsOpen(false)} // Close on navigation
-            >
-              {label}
-            </Link>
-          ))}
-        </nav>
       </aside>
     </>
   );

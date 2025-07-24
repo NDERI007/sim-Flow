@@ -1,88 +1,38 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { supabase } from './supabase';
 import type { User } from '@supabase/supabase-js';
+import { supabase } from './supabase';
 
 interface AuthState {
   user: User | null;
   accessToken: string | null;
-  loading: boolean;
   initialized: boolean;
   hydrated: boolean;
   error: string | null;
-
-  getUser: () => Promise<void>;
+  lastAuthAt: string | null;
   signOut: () => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>()(
-  persist(
-    (set) => ({
-      user: null,
-      accessToken: null,
-      loading: true,
-      hydrated: false,
-      error: null,
-      initialized: false,
+export const useAuthStore = create<AuthState>((set) => ({
+  user: null,
+  accessToken: null,
+  initialized: false,
+  hydrated: false,
+  error: null,
+  lastAuthAt: null,
 
-      getUser: async () => {
-        set({ loading: true, error: null });
-
-        const { data, error } = await supabase.auth.getSession();
-
-        if (error || !data.session) {
-          set({
-            user: null,
-            accessToken: null,
-            error: error?.message ?? 'No session found',
-            loading: false,
-            initialized: false,
-          });
-        } else {
-          set({
-            user: data.session.user,
-            accessToken: data.session.access_token,
-            loading: false,
-            error: null,
-            initialized: true,
-          });
-        }
-      },
-
-      signOut: async () => {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          set({ error: error.message });
-        } else {
-          set({
-            user: null,
-            accessToken: null,
-            error: null,
-            initialized: false,
-            hydrated: false,
-          });
-        }
-      },
-    }),
-    {
-      name: 'auth-storage',
-      partialize: (state) => ({
-        user: state.user,
-        accessToken: state.accessToken,
-      }),
-      storage:
-        typeof window !== 'undefined'
-          ? {
-              getItem: async (name) =>
-                JSON.parse(localStorage.getItem(name) || 'null'),
-              setItem: async (name, value) =>
-                localStorage.setItem(name, JSON.stringify(value)),
-              removeItem: async (name) => localStorage.removeItem(name),
-            }
-          : undefined,
-      onRehydrateStorage: () => () => {
-        useAuthStore.setState({ hydrated: true });
-      },
-    },
-  ),
-);
+  signOut: async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      set({ error: error.message });
+    } else {
+      set({
+        user: null,
+        accessToken: null,
+        error: null,
+        initialized: true,
+        hydrated: true,
+        lastAuthAt: null,
+      });
+    }
+  },
+}));

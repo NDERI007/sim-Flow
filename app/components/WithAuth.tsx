@@ -1,60 +1,41 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase } from '../lib/createSupcl';
-import { User } from '@supabase/supabase-js';
-
-type WithAuthGuardOptions = {
-  redirectTo?: string;
-  allowExpired?: boolean; // if true, skip sign-in-at expiry check
-};
+import { useEffect, useState } from 'react';
+import { useAuthStore } from '../lib/AuthStore';
 
 export function withAuthGuard<P>(
-  WrappedComponent: (props: P & { user: User }) => React.ReactElement,
-  options: WithAuthGuardOptions = {},
+  WrappedComponent: (props: P) => React.ReactElement,
+  options: { redirectTo?: string; allowExpired?: boolean } = {},
 ) {
   return function ProtectedComponent(props: P) {
     const router = useRouter();
-    const [loading, setLoading] = useState(true);
-    const [user, setUser] = useState<User | null>(null);
+    const { user, initialized, lastAuthAt } = useAuthStore();
+    const [allowed, setAllowed] = useState(false);
 
     useEffect(() => {
-      const checkAuth = async () => {
-        // Hydrate session from cookies
-        const {
-          data: { session },
-          error: sessionError,
-        } = await supabase.auth.getSession();
+      if (!initialized) return; // Wait until AuthWrapper hydrates
 
-        if (sessionError || !session?.user) {
-          router.push(options.redirectTo ?? '/unAuth');
-          return;
-        }
+      if (!options.allowExpired) {
+        const lastSignedIn = lastAuthAt; // fallback to derived if needed
 
-        const user = session.user;
-
-        if (!options.allowExpired) {
-          const lastSignIn = user.last_sign_in_at;
+        if (lastSignedIn) {
+          const lastSignInDate = new Date(lastSignedIn);
           const twoMonthsAgo = new Date();
           twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
 
-          if (lastSignIn && new Date(lastSignIn) < twoMonthsAgo) {
-            await supabase.auth.signOut();
-            router.push(options.redirectTo ?? '/unAuth');
+          if (lastSignInDate < twoMonthsAgo) {
+            router.push(options.redirectTo ?? '/login');
             return;
           }
         }
+      }
 
-        setUser(user);
-        setLoading(false);
-      };
+      setAllowed(true);
+    }, [initialized, user, lastAuthAt, router]);
 
-      checkAuth();
-    }, [router]);
+    if (!initialized || !allowed) return null;
 
-    if (loading || !user) return null; // Or a spinner/loading screen
-
-    return <WrappedComponent {...props} user={user} />;
+    return <WrappedComponent {...props} />;
   };
 }

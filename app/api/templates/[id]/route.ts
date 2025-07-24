@@ -1,26 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
+import { ServerClient } from '../../../lib/supabase/server';
 
-const createSupabaseClient = (token: string) =>
-  createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    },
-  );
+// Helper to extract `id` from request URL
+function getIdFromUrl(req: NextRequest) {
+  const url = new URL(req.url);
+  const segments = url.pathname.split('/');
+  return segments[segments.length - 1]; // assumes [...]/[id]/route.ts
+}
 
-async function getSupabaseClientFromRequest(req: NextRequest) {
-  const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) {
-    return { error: 'Missing token' };
-  }
+async function SupabaseRequest(req: NextRequest, res: NextResponse) {
+  const supabase = ServerClient(req, res);
 
-  const supabase = createSupabaseClient(token);
   const {
     data: { user },
     error,
@@ -32,17 +22,12 @@ async function getSupabaseClientFromRequest(req: NextRequest) {
 
   return { supabase, user };
 }
-// Helper to extract `id` from request URL
-function getIdFromUrl(req: NextRequest) {
-  const url = new URL(req.url);
-  const segments = url.pathname.split('/');
-  return segments[segments.length - 1]; // assumes [...]/[id]/route.ts
-}
 
 // PATCH: Update a template
 export async function PATCH(req: NextRequest) {
-  const { supabase, user, error } = await getSupabaseClientFromRequest(req);
-  if (error || !supabase || !user) {
+  const res = NextResponse.next();
+  const { supabase, user, error } = await SupabaseRequest(req, res);
+  if (error) {
     return NextResponse.json({ error }, { status: 401 });
   }
 
@@ -71,8 +56,9 @@ export async function PATCH(req: NextRequest) {
 
 // DELETE: Remove a template
 export async function DELETE(req: NextRequest) {
-  const { supabase, user, error } = await getSupabaseClientFromRequest(req);
-  if (error || !supabase || !user) {
+  const res = NextResponse.next();
+  const { supabase, user, error } = await SupabaseRequest(req, res);
+  if (error) {
     return NextResponse.json({ error }, { status: 401 });
   }
 

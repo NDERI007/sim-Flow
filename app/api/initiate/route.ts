@@ -1,32 +1,12 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextRequest, NextResponse } from 'next/server';
-
 import { v4 as uuidv4 } from 'uuid';
 import { parsePaystackError } from '../../lib/paystackE/stackErr';
+import { ServerClient } from '../../lib/supabase/server';
 
 export async function POST(req: NextRequest) {
+  const res = NextResponse.next();
+  const supabase = ServerClient(req, res);
   try {
-    const rawAuth = req.headers.get('authorization');
-    const token = rawAuth?.toLowerCase().startsWith('bearer ')
-      ? rawAuth.slice(7)
-      : null;
-
-    if (!token) {
-      console.warn('Missing or malformed Authorization header');
-      return NextResponse.json(
-        { message: 'Missing or invalid token' },
-        { status: 401 },
-      );
-    }
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        global: { headers: { Authorization: `Bearer ${token}` } },
-        auth: { persistSession: false },
-      },
-    );
-
     const {
       data: { user },
       error,

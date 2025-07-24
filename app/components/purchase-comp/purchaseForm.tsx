@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import axios from 'axios';
-import { useAuthStore } from '../../lib/AuthStore';
 import { Wallet } from 'lucide-react';
 
 export default function PurchaseForm() {
   const [amount, setAmount] = useState(100); // in KES
-
   const [loading, setLoading] = useState(false);
-  const accessToken = useAuthStore((s) => s.accessToken);
+
   const pricePerSms = 0.5;
   const credits = Math.floor(amount / pricePerSms);
 
@@ -16,17 +14,9 @@ export default function PurchaseForm() {
     setLoading(true);
 
     try {
-      const { data } = await axios.post(
-        '/api/initiate',
-        {
-          credits,
-        },
-        {
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-          },
-        },
-      );
+      const { data } = await axios.post('/api/initiate', {
+        credits,
+      });
 
       if (data?.authorization_url) {
         window.location.href = data.authorization_url;

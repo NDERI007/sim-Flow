@@ -1,26 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { ServerClient } from '../../lib/supabase/server';
 
-const createSupabaseClient = (token: string) =>
-  createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      },
-    },
-  );
-
-async function getSupabaseClientFromRequest(req: NextRequest) {
-  const token = req.headers.get('authorization')?.replace('Bearer ', '');
-  if (!token) {
-    return { error: 'Missing token' };
-  }
-
-  const supabase = createSupabaseClient(token);
+async function SupabaseRequest(req: NextRequest, res: NextResponse) {
+  const supabase = ServerClient(req, res);
   const {
     data: { user },
     error,
@@ -34,7 +16,8 @@ async function getSupabaseClientFromRequest(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const { supabase, user, error } = await getSupabaseClientFromRequest(req);
+  const res = NextResponse.next();
+  const { supabase, user, error } = await SupabaseRequest(req, res);
   if (error) return NextResponse.json({ error }, { status: 401 });
 
   const { data, error: fetchError } = await supabase
@@ -50,7 +33,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { supabase, user, error } = await getSupabaseClientFromRequest(req);
+  const res = NextResponse.next();
+  const { supabase, user, error } = await SupabaseRequest(req, res);
   if (error) return NextResponse.json({ error }, { status: 401 });
 
   const { name: rawName, content: rawContent } = await req.json();

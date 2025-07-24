@@ -1,22 +1,9 @@
-import { createClient } from '@supabase/supabase-js';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 export async function fetchGroupContacts(
+  supabase: SupabaseClient,
   groupIds: string[],
-  accessToken?: string, // made optional
 ) {
-  const supabase = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    accessToken
-      ? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      : process.env.SUPABASE_SERVICE_ROLE_KEY!, // fallback to service key
-    {
-      global: accessToken
-        ? { headers: { Authorization: `Bearer ${accessToken}` } }
-        : {},
-      auth: { persistSession: false },
-    },
-  );
-
   const { data, error } = await supabase.rpc('get_contacts_by_group_ids', {
     group_ids: groupIds,
   });

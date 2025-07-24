@@ -1,41 +1,24 @@
 import axios from 'axios';
 
-export const fetchTemplates = async (accessToken: string) => {
-  const res = await axios.get('/api/templates', {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+export const fetchTemplates = async () => {
+  const res = await axios.get('/api/templates', {});
   return res.data;
 };
 
-export const createTemplate = async (
-  accessToken: string,
-  payload: { name: string; content: string },
-) => {
-  await axios.post('/api/templates', payload, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+export const createTemplate = async (payload: {
+  name: string;
+  content: string;
+}) => {
+  await axios.post('/api/templates', payload, {});
 };
 
 export const updateTemplate = async (
-  accessToken: string,
   id: string,
   updates: { name: string; content: string },
 ) => {
-  await axios.patch(`/api/templates/${id}`, updates, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+  await axios.patch(`/api/templates/${id}`, updates, {});
 };
 
-export const deleteTemplate = async (accessToken: string, id: string) => {
-  await axios.delete(`/api/templates/${id}`, {
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  });
+export const deleteTemplate = async (id: string) => {
+  await axios.delete(`/api/templates/${id}`, {});
 };
