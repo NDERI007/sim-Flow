@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ServerClient } from '../../lib/supabase/server';
 
+type Group = {
+  group_name: string;
+};
+
+type ScheduledMessage = {
+  id: string;
+  message: string;
+  scheduled_at: string;
+  groups?: Group[];
+};
+
+type FlatScheduledMessage = {
+  id: string;
+  message: string;
+  scheduled_at: string;
+  group_names: string[];
+};
+
 export async function GET(req: NextRequest) {
   const res = NextResponse.next();
   const supabase = ServerClient(req, res);
@@ -17,12 +35,14 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const flatScheduled = (data ?? []).map((msg) => ({
-    id: msg.id,
-    message: msg.message,
-    scheduled_at: msg.scheduled_at,
-    group_names: (msg.groups || []).map((g: any) => g.group_name),
-  }));
+  const flatScheduled: FlatScheduledMessage[] = (data ?? []).map(
+    (msg: ScheduledMessage): FlatScheduledMessage => ({
+      id: msg.id,
+      message: msg.message,
+      scheduled_at: msg.scheduled_at,
+      group_names: (msg.groups ?? []).map((g) => g.group_name),
+    }),
+  );
 
   return NextResponse.json({ scheduled: flatScheduled });
 }
