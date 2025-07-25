@@ -30,6 +30,7 @@ export async function middleware(request: NextRequest) {
     '/register',
     '/verify',
     '/completion',
+    '/forgot-password',
   ].includes(request.nextUrl.pathname);
 
   if (!isAuthenticated && !isPublicRoute) {
