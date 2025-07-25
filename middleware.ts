@@ -24,16 +24,22 @@ export async function middleware(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const isAuthenticated = Boolean(data?.claims?.sub); // sub = user id
 
-  const isPublicRoute = [
-    '/',
-    '/login',
-    '/register',
-    '/verify',
-    '/completion',
-    '/forgot-password',
-  ].includes(request.nextUrl.pathname);
+  const protectedRoutes = [
+    '/send',
+    '/purchase',
+    '/contacts',
+    '/Reports',
+    '/Quota-Usage',
+    '/templates',
+    '/admin',
+    '/scheduled',
+  ];
 
-  if (!isAuthenticated && !isPublicRoute) {
+  const isProtected = protectedRoutes.some((path) =>
+    request.nextUrl.pathname.startsWith(path),
+  );
+
+  if (isProtected && !isAuthenticated) {
     const url = request.nextUrl.clone();
     url.pathname = '/unauth';
     url.searchParams.set('redirectedFrom', request.nextUrl.pathname);
