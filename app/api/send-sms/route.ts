@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import Redis from 'ioredis';
-import { FlowProducer } from 'bullmq';
+import { FlowProducer, Queue } from 'bullmq';
 import { prepareRecipients } from '../../lib/prepareRE/receipients';
 import { fetchGroupContacts } from '../../lib/fetchContacts/fetchgroup';
 import {
@@ -15,6 +15,8 @@ const connection = new Redis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
 });
 const flowProducer = new FlowProducer({ connection });
+const smsQueue = new Queue('smsQueue', { connection });
+
 const BATCH_SIZE = 500;
 
 export async function POST(req: NextRequest) {
@@ -150,7 +152,7 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
-    async function callWorkerPing() {
+    async function callWorker() {
       try {
         const res = await fetch(`${process.env.WORKER_URL}/ping`, {
           method: 'GET',
@@ -192,7 +194,11 @@ export async function POST(req: NextRequest) {
       const isScheduled = scheduledAt && new Date(scheduledAt) > new Date();
 
       if (!isScheduled && phoneBatches.length > 0) {
-        await callWorkerPing();
+        await callWorker();
+        await smsQueue.remove(`flow-${messageRow.id}`);
+        for (let i = 0; i < phoneBatches.length; i++) {
+          await smsQueue.remove(`sms-${messageRow.id}-batch-${i}`);
+        }
         await flowProducer.add({
           name: `send_sms_flow_${messageRow.id}`,
           queueName: 'smsQueue',
