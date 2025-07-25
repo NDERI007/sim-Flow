@@ -27,6 +27,7 @@ export default function RootLayout({
     '/Reports',
     '/Quota-Usage',
     '/templates',
+    '/scheduled',
   ];
   const showHeader = HeaderOn.includes(pathname);
   return (

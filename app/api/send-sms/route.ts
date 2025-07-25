@@ -152,24 +152,6 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
-    async function callWorker() {
-      try {
-        const res = await fetch(`${process.env.WORKER_URL}/ping`, {
-          method: 'GET',
-          headers: {
-            'x-cron-secret': process.env.CRON_SECRET!,
-          },
-        });
-
-        if (!res.ok) {
-          console.warn('⚠️ Worker ping failed with status', res.status);
-        } else {
-          console.log('✅ Worker ping successful');
-        }
-      } catch (err) {
-        console.error('❌ Worker ping error:', err);
-      }
-    }
 
     const phoneBatches = [];
     for (let i = 0; i < allPhones.length; i += BATCH_SIZE) {
@@ -190,15 +172,30 @@ export async function POST(req: NextRequest) {
       contact_map[number] = null;
     }
 
-    try {
-      const isScheduled = scheduledAt && new Date(scheduledAt) > new Date();
+    const isScheduled = scheduledAt && new Date(scheduledAt) > new Date();
+    let cappedDelay = 0;
 
-      if (!isScheduled && phoneBatches.length > 0) {
-        await callWorker();
+    if (isScheduled) {
+      const delayMs = new Date(scheduledAt).getTime() - Date.now();
+      const maxDelay = 1000 * 60 * 60 * 24 * 2; // 2 days in ms
+
+      if (delayMs > maxDelay) {
+        return NextResponse.json(
+          { message: 'Scheduled time cannot exceed 2 days from now.' },
+          { status: 400 },
+        );
+      }
+
+      cappedDelay = Math.max(0, delayMs);
+    }
+
+    try {
+      if (phoneBatches.length > 0) {
         await smsQueue.remove(`flow-${messageRow.id}`);
         for (let i = 0; i < phoneBatches.length; i++) {
           await smsQueue.remove(`sms-${messageRow.id}-batch-${i}`);
         }
+
         await flowProducer.add({
           name: `send_sms_flow_${messageRow.id}`,
           queueName: 'smsQueue',
@@ -230,14 +227,15 @@ export async function POST(req: NextRequest) {
             },
             opts: {
               jobId: `sms-${messageRow.id}-batch-${i}`,
-              delay: i * 1000,
-              attempts: 1,
+              delay: cappedDelay + i * 1000, // Stagger if needed
+              attempts: 3,
               backoff: { type: 'exponential', delay: 5000 },
               removeOnComplete: true,
               removeOnFail: false,
             },
           })),
         });
+
         const { error: quotaError } = await supabase.rpc(
           'deduct_quota_and_log',
           {

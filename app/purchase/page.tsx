@@ -7,7 +7,7 @@ import RecentPurchase from '../components/purchase-comp/RecentPurchase';
 
 export default function PurchasePage() {
   return (
-    <main className="min-h-screen bg-gray-900 px-4 py-6 text-gray-900 transition-colors dark:bg-gray-900 dark:text-gray-100">
+    <main className="min-h-screen bg-gray-900 px-4 py-6 text-gray-100 text-gray-900 transition-colors">
       <div className="mx-auto w-full max-w-5xl space-y-6">
         <Suspense fallback={null}>
           <PurchaseStatus />

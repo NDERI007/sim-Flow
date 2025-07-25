@@ -30,5 +30,11 @@ export default async function ScheduledPage() {
     }),
   );
 
-  return <ScheduledList messages={scheduled} />;
+  return (
+    <div className="flex min-h-screen justify-center overflow-auto bg-gray-900 px-4 py-10">
+      <div className="w-full max-w-xl">
+        <ScheduledList messages={scheduled} />
+      </div>
+    </div>
+  );
 }
