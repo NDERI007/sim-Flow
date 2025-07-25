@@ -24,10 +24,9 @@ export async function middleware(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const isAuthenticated = Boolean(data?.claims?.sub); // sub = user id
 
-  const isPublicRoute =
-    request.nextUrl.pathname.startsWith('/login') ||
-    request.nextUrl.pathname.startsWith('/register') ||
-    request.nextUrl.pathname.startsWith('/');
+  const isPublicRoute = ['/', '/login', '/register'].includes(
+    request.nextUrl.pathname,
+  );
 
   if (!isAuthenticated && !isPublicRoute) {
     const url = request.nextUrl.clone();

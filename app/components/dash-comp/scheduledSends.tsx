@@ -1,73 +1,77 @@
 'use client';
 
-import { motion } from 'framer-motion';
+import { useState, useTransition } from 'react';
 import { Trash2 } from 'lucide-react';
+import { motion } from 'framer-motion';
 import { DateTime } from 'luxon';
-import axios from 'axios';
-import { useScheduledMessages } from '../../lib/scheduleSWR';
+import { toast } from 'sonner';
+import { deleteScheduledMessage } from '../../lib/scheduled/actions';
 
-interface ScheduledMessage {
+export interface ScheduledMessage {
   id: string;
   message: string;
   scheduled_at: string;
-  group_names?: string[] | null;
+  group_names?: string[];
 }
 
-const groupByDate = (messages: ScheduledMessage[]) => {
-  const now = DateTime.local().setZone('Africa/Nairobi');
-  const grouped: Record<string, ScheduledMessage[]> = {};
+export function ScheduledList({ messages }: { messages: ScheduledMessage[] }) {
+  const [isPending, startTransition] = useTransition();
+  const [localMessages, setLocalMessages] = useState(messages);
 
-  for (const msg of messages) {
-    const date = DateTime.fromISO(msg.scheduled_at).setZone('Africa/Nairobi');
-    let label = date.toFormat('DDD');
-
-    if (date.hasSame(now, 'day')) label = 'Today';
-    else if (date.hasSame(now.plus({ days: 1 }), 'day')) label = 'Tomorrow';
-
-    if (!grouped[label]) grouped[label] = [];
-    grouped[label].push(msg);
-  }
-
-  return grouped;
-};
-
-export default function ScheduledSendsList() {
-  const { scheduled, mutate, isLoading } = useScheduledMessages();
-
-  const handleDelete = async (id: string) => {
-    const confirm = window.confirm(
-      'Are you sure you want to delete this scheduled message?',
-    );
-    if (!confirm) return;
-
-    mutate(
-      async (currentData?: { scheduled: ScheduledMessage[] }) => {
-        await axios.delete('/api/schedule-del', { data: { id } });
-        return {
-          scheduled:
-            currentData?.scheduled.filter((msg) => msg.id !== id) ?? [],
-        };
-      },
-      {
-        optimisticData: (currentData) => ({
-          scheduled:
-            currentData?.scheduled.filter((msg) => msg.id !== id) ?? [],
-        }),
-        rollbackOnError: true,
-        populateCache: true,
-        revalidate: false,
-      },
-    );
+  const handleDelete = (id: string) => {
+    toast.custom((t) => (
+      <div className="flex flex-col gap-2 rounded-md bg-white p-4 text-black shadow-lg">
+        <span className="text-sm">Delete this scheduled message?</span>
+        <div className="mt-2 flex gap-2">
+          <button
+            onClick={() => {
+              toast.dismiss(t);
+              startTransition(async () => {
+                const res = await deleteScheduledMessage(id);
+                if (res.success) {
+                  toast.success('Message deleted');
+                  setLocalMessages((prev) => prev.filter((m) => m.id !== id));
+                } else {
+                  toast.error(res.error || 'Failed to delete');
+                }
+              });
+            }}
+            className="rounded bg-red-500 px-2 py-1 text-sm text-white hover:bg-red-600"
+          >
+            Yes, Delete
+          </button>
+          <button
+            onClick={() => toast.dismiss(t)}
+            className="rounded border border-gray-300 px-2 py-1 text-sm"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    ));
   };
 
-  const grouped = groupByDate(scheduled.slice(0, 5));
+  const now = DateTime.local().setZone('Africa/Nairobi');
+  const grouped = groupByDate(localMessages);
+
+  function groupByDate(messages: ScheduledMessage[]) {
+    const grouped: Record<string, ScheduledMessage[]> = {};
+
+    for (const msg of messages) {
+      const date = DateTime.fromISO(msg.scheduled_at).setZone('Africa/Nairobi');
+      let label = date.toFormat('DDD');
+      if (date.hasSame(now, 'day')) label = 'Today';
+      else if (date.hasSame(now.plus({ days: 1 }), 'day')) label = 'Tomorrow';
+
+      if (!grouped[label]) grouped[label] = [];
+      grouped[label].push(msg);
+    }
+
+    return grouped;
+  }
 
   return (
     <div className="rounded-xl bg-slate-950 p-4 text-gray-300 md:p-6">
-      {isLoading && (
-        <p className="text-sm text-gray-500">Loading scheduled messages...</p>
-      )}
-
       {Object.entries(grouped).map(([label, items]) => (
         <div key={label} className="mb-6">
           <p className="mb-3 text-sm font-semibold text-gray-400">{label}</p>
@@ -109,6 +113,7 @@ export default function ScheduledSendsList() {
                   <button
                     onClick={() => handleDelete(item.id)}
                     className="mt-1 ml-4 text-gray-500 hover:text-pink-400"
+                    disabled={isPending}
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>
@@ -119,7 +124,7 @@ export default function ScheduledSendsList() {
         </div>
       ))}
 
-      {scheduled.length === 0 && !isLoading && (
+      {localMessages.length === 0 && (
         <p className="text-sm text-gray-500">No upcoming scheduled messages.</p>
       )}
     </div>

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ServerClient } from '../../lib/supabase/server';
+import { ServerClient } from '../../lib/supabase/serverClient';
 
 export async function GET(req: NextRequest) {
   const res = NextResponse.next();

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { ServerClient } from '../../../lib/supabase/server';
+import { ServerClient } from '../../../lib/supabase/serverClient';
 
 // Helper to extract `id` from request URL
 function getIdFromUrl(req: NextRequest) {

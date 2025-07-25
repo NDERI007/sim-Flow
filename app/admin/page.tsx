@@ -1,7 +1,6 @@
 'use client';
 import Link from 'next/link';
 import { CalendarClock, Send } from 'lucide-react';
-import ScheduledSendsList from '../components/dash-comp/scheduledSends';
 import SummaryCards from '../components/dash-comp/summaryCards';
 import { withAuthGuard } from '../components/WithAuth';
 
@@ -18,7 +17,13 @@ function Dashboard() {
             <CalendarClock className="h-6 w-6" />
             Upcoming Scheduled Sends
           </h2>
-          <ScheduledSendsList />
+
+          <Link
+            href="/scheduled"
+            className="inline-flex items-center gap-2 rounded-md bg-pink-900 px-3 py-1.5 text-sm text-white transition hover:bg-pink-800"
+          >
+            View All Scheduled Sends
+          </Link>
         </div>
       </div>
 

@@ -5,6 +5,7 @@ import { SpeedInsights } from '@vercel/speed-insights/next';
 import CompanyHeader from './components/companyHeader';
 import { usePathname } from 'next/navigation';
 import { AuthWrapper } from './lib/AuthListner';
+import { Toaster } from 'sonner';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -34,6 +35,7 @@ export default function RootLayout({
         {showHeader && <CompanyHeader />}
         <AuthWrapper />
         {children}
+        <Toaster richColors />
         <SpeedInsights />
       </body>
     </html>

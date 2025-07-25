@@ -7,7 +7,7 @@ import {
   insertMessage,
   type MessageRow,
 } from '../../lib/Insert-link/contact-link';
-import { ServerClient } from '../../lib/supabase/server';
+import { ServerClient } from '../../lib/supabase/serverClient';
 
 // Redis & BullMQ setup
 const connection = new Redis(process.env.REDIS_URL!, {
