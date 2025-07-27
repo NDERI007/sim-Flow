@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "worker": "ts-node worker/sms-worker.ts"
+    "worker": "ts-node worker/sms-worker.ts",
+    "clear:queue": "ts-node scripts/clearJobs.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
@@ -27,10 +28,12 @@
     "luxon": "^3.6.1",
     "next": "15.3.3",
     "papaparse": "^5.5.3",
+    "qrcode": "^1.5.4",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "resend": "^4.6.0",
     "sonner": "^2.0.6",
+    "speakeasy": "^2.0.0",
     "swr": "^2.3.3",
     "use-debounce": "^10.0.5",
     "uuid": "^11.1.0",

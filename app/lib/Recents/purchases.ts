@@ -1,6 +1,6 @@
 import useSWR from 'swr';
 import { useEffect } from 'react';
-import { supabase } from '../supabase';
+import { supabase } from '../supabase/BrowserClient';
 import { useAuthStore } from '../AuthStore';
 
 export interface PurchaseLog {

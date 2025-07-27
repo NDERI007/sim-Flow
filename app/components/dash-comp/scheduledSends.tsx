@@ -3,10 +3,8 @@
 import { useState, useTransition } from 'react';
 import { Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-
 import { DateTime } from 'luxon';
 import { toast } from 'sonner';
-import { deleteScheduledMessage } from '../../lib/scheduled/actions';
 
 export interface ScheduledMessage {
   id: string;
@@ -15,7 +13,13 @@ export interface ScheduledMessage {
   group_names?: string[];
 }
 
-export function ScheduledList({ messages }: { messages: ScheduledMessage[] }) {
+export function ScheduledList({
+  messages,
+  onDelete,
+}: {
+  messages: ScheduledMessage[];
+  onDelete: () => void;
+}) {
   const [isPending, startTransition] = useTransition();
   const [localMessages, setLocalMessages] = useState(messages);
 
@@ -28,12 +32,28 @@ export function ScheduledList({ messages }: { messages: ScheduledMessage[] }) {
             onClick={() => {
               toast.dismiss(t);
               startTransition(async () => {
-                const res = await deleteScheduledMessage(id);
-                if (res.success) {
+                try {
+                  const res = await fetch('/api/schedule-del', {
+                    method: 'POST',
+                    body: JSON.stringify({ message_id: id }),
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                  });
+
+                  const result = await res.json();
+
+                  if (!res.ok) {
+                    toast.error(result.error || 'Failed to delete');
+                    return;
+                  }
+
                   toast.success('Message deleted');
+                  onDelete();
                   setLocalMessages((prev) => prev.filter((m) => m.id !== id));
-                } else {
-                  toast.error(res.error || 'Failed to delete');
+                } catch (err) {
+                  console.error('Delete error:', err);
+                  toast.error('Network or server error');
                 }
               });
             }}
@@ -53,7 +73,6 @@ export function ScheduledList({ messages }: { messages: ScheduledMessage[] }) {
   };
 
   const now = DateTime.local().setZone('Africa/Nairobi');
-  const grouped = groupByDate(localMessages);
 
   function groupByDate(messages: ScheduledMessage[]) {
     const grouped: Record<string, ScheduledMessage[]> = {};
@@ -71,12 +90,13 @@ export function ScheduledList({ messages }: { messages: ScheduledMessage[] }) {
     return grouped;
   }
 
+  const grouped = groupByDate(localMessages);
+
   return (
     <div className="rounded-xl bg-slate-950 p-4 text-gray-300 md:p-6">
       {Object.entries(grouped).map(([label, items]) => (
         <div key={label} className="mb-6">
           <p className="mb-3 text-sm font-semibold text-gray-400">{label}</p>
-
           <ul className="space-y-4">
             {items.map((item) => (
               <motion.li
@@ -91,14 +111,12 @@ export function ScheduledList({ messages }: { messages: ScheduledMessage[] }) {
                     <p className="line-clamp-2 text-sm text-gray-200">
                       {item.message}
                     </p>
-
                     <div className="flex items-center justify-between text-xs text-gray-500">
                       <span>
                         {DateTime.fromISO(item.scheduled_at)
                           .setZone('Africa/Nairobi')
                           .toFormat('hh:mm a')}
                       </span>
-
                       <span
                         className={`rounded px-2 py-0.5 text-sm ${
                           item.group_names?.length
@@ -106,11 +124,10 @@ export function ScheduledList({ messages }: { messages: ScheduledMessage[] }) {
                             : 'bg-gray-800 text-gray-400 italic'
                         }`}
                       >
-                        {item.group_names?.join() || 'Ungrouped'}
+                        {item.group_names?.join(', ') || 'Ungrouped'}
                       </span>
                     </div>
                   </div>
-
                   <button
                     onClick={() => handleDelete(item.id)}
                     className="mt-1 ml-4 text-gray-500 hover:text-pink-400"

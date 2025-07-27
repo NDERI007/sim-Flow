@@ -1,4 +1,4 @@
-import { supabase } from '../../lib/createSupcl';
+import { supabase } from '../../lib/supabase/createClient';
 import { Resend } from 'resend';
 import { DateTime } from 'luxon';
 import { NextRequest, NextResponse } from 'next/server';

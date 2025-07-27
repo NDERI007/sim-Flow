@@ -25,10 +25,10 @@ export async function POST(req: NextRequest) {
     },
   );
 
-  const { password, sender_id } = await req.json().catch(() => ({}));
+  const { password } = await req.json().catch(() => ({}));
   const token = req.cookies.get('verify_token')?.value;
 
-  if (!token || !password || !sender_id) {
+  if (!token || !password) {
     return NextResponse.json(
       { error: 'Missing required fields or invalid session.' },
       { status: 400 },
@@ -83,7 +83,6 @@ export async function POST(req: NextRequest) {
     id: userId,
     email,
     name: pending.name,
-    sender_id,
     quota: 0,
     role: 'admin',
   });

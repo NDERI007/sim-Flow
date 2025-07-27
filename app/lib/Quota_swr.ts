@@ -1,7 +1,7 @@
 import useSWR from 'swr';
 import { useEffect } from 'react';
 import { useAuthStore } from './AuthStore';
-import { supabase } from './supabase';
+import { supabase } from './supabase/BrowserClient';
 
 export function useQuota() {
   const user = useAuthStore((s) => s.user);

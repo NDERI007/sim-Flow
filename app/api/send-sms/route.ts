@@ -8,6 +8,7 @@ import {
   type MessageRow,
 } from '../../lib/Insert-link/contact-link';
 import { ServerClient } from '../../lib/supabase/serverClient';
+import { DateTime } from 'luxon';
 
 // Redis & BullMQ setup
 const connection = new Redis(process.env.REDIS_URL!, {
@@ -29,7 +30,7 @@ export async function POST(req: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (error || !user) {
-      console.error('❌ Failed to validate token:', { error, user });
+      console.error('Failed to validate', { error, user });
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
@@ -172,11 +173,16 @@ export async function POST(req: NextRequest) {
       contact_map[number] = null;
     }
 
-    const isScheduled = scheduledAt && new Date(scheduledAt) > new Date();
+    function UTCtoLocalInput(input: string): Date {
+      return DateTime.fromISO(input, { zone: 'Africa/Nairobi' }).toJSDate();
+    }
+
+    const isScheduled =
+      scheduledAt && UTCtoLocalInput(scheduledAt) > new Date();
     let cappedDelay = 0;
 
     if (isScheduled) {
-      const delayMs = new Date(scheduledAt).getTime() - Date.now();
+      const delayMs = UTCtoLocalInput(scheduledAt).getTime() - Date.now();
       const maxDelay = 1000 * 60 * 60 * 24 * 2; // 2 days in ms
 
       if (delayMs > maxDelay) {

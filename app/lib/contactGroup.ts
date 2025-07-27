@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import useSWR from 'swr';
-import { supabase } from './supabase';
+import { supabase } from './supabase/BrowserClient';
 import type { ContactGroup } from './smsStore';
 
 export async function deleteContactGroup(

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../lib/supabase/BrowserClient';
 import { DateTime } from 'luxon';
 
 interface QuotaLog {
@@ -11,13 +11,7 @@ interface QuotaLog {
   created_at: string;
 }
 
-const REASONS = [
-  'all',
-  'purchase',
-  'send_sms',
-  'retries_exhausted',
-  'scheduled-send',
-];
+const REASONS = ['all', 'purchase', 'send_sms', 'retries_exhausted'];
 
 export default function QuotaReport() {
   const [logs, setLogs] = useState<QuotaLog[]>([]);

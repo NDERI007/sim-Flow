@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import { useRouter } from 'next/navigation';
+import { SenderIdInfo } from '../components/senderModal';
 
 export default function FinishRegistrationPage() {
   const router = useRouter();
@@ -57,14 +58,7 @@ export default function FinishRegistrationPage() {
 
         {error && <p className="text-sm text-red-500">{error}</p>}
 
-        <input
-          type="text"
-          placeholder="Sender ID (cannot be changed later)"
-          value={senderId}
-          onChange={(e) => setSenderId(e.target.value)}
-          required
-          className="w-full rounded bg-zinc-700 px-3 py-2 text-white"
-        />
+        <SenderIdInfo />
 
         <input
           type="password"

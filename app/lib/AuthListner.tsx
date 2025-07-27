@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { supabase } from './supabase';
+import { supabase } from './supabase/BrowserClient';
 import { useAuthStore } from './AuthStore';
 
 export function AuthWrapper() {

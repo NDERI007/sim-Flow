@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { mutate } from 'swr';
 import { useAuthStore } from '../../lib/AuthStore';
-import { supabase } from '../../lib/supabase';
+import { supabase } from '../../lib/supabase/BrowserClient';
 
 interface Contact {
   name: string;
