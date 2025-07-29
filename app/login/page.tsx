@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '../lib/supabase/BrowserClient';
 import Link from 'next/link';
@@ -10,22 +10,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
-  const [checkingSession, setCheckingSession] = useState(true);
-
-  // Auto-redirect if user is already logged in
-  useEffect(() => {
-    const checkUser = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-      if (user) {
-        router.push('/admin');
-      } else {
-        setCheckingSession(false);
-      }
-    };
-    checkUser();
-  }, [router]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,16 +25,34 @@ export default function LoginPage() {
       return;
     }
 
-    router.push('/admin');
-  };
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
-  if (checkingSession) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
-        <p>Checking if yous valid</p>
-      </main>
-    );
-  }
+    if (!user) {
+      setError('Unexpected error logging in');
+      return;
+    }
+
+    const { data: userRow, error: fetchError } = await supabase
+      .from('users')
+      .select('mfa_enabled')
+      .eq('id', user.id)
+      .single();
+
+    if (fetchError) {
+      setError('Failed to verify MFA status');
+      return;
+    }
+
+    if (userRow?.mfa_enabled) {
+      // Redirect to MFA verification
+      router.push('mfa/verify');
+    } else {
+      // No MFA, proceed normally
+      router.push('/admin');
+    }
+  };
 
   return (
     <main className="flex min-h-screen items-center justify-center bg-gray-900 px-4">
@@ -104,7 +106,10 @@ export default function LoginPage() {
         >
           Log In
         </button>
-        <Link href={'/forgot-password'} className="cursor-pointer text-white">
+        <Link
+          href={'/forgot-password'}
+          className="block text-center text-sm text-gray-400 hover:underline"
+        >
           Forgot password?
         </Link>
       </form>
