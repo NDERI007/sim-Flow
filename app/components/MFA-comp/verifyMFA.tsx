@@ -5,7 +5,7 @@ import axios from 'axios';
 import { supabase } from '../../lib/supabase/BrowserClient';
 import { RecoveryCodesModal } from './codeRecModal';
 
-export default function VerifyMfa() {
+export default function VerifyMfa({ onComplete }: { onComplete: () => void }) {
   const [digits, setDigits] = useState(Array(6).fill(''));
   const [verifying, setVerifying] = useState(false);
   const [verified, setVerified] = useState(false);
@@ -108,6 +108,7 @@ export default function VerifyMfa() {
         <RecoveryCodesModal
           onClose={() => {
             setShowRecoveryModal(false);
+            onComplete();
             window.location.href = '/admin';
           }}
         />

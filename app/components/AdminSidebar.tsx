@@ -16,6 +16,7 @@ export default function AdminSidebar() {
     { href: '/templates', label: 'Templates' },
     { href: '/purchase', label: 'Pricing' },
     { href: '/Quota-Usage', label: 'Quota Usage' },
+    { href: '/settings', label: 'Enable MFA' },
   ];
 
   // Lock scroll

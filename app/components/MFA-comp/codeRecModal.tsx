@@ -1,83 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { nanoid } from 'nanoid';
-import { supabase } from '../../lib/supabase/BrowserClient';
-
-function hashSHA256(input: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(input);
-  return crypto.subtle.digest('SHA-256', data).then((hashBuffer) => {
-    return Array.from(new Uint8Array(hashBuffer))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('');
-  });
-}
+import { generateRecoveryCodes } from '../../lib/mfa/generateCodes';
 
 export function RecoveryCodesModal({ onClose }: { onClose: () => void }) {
   const [codes, setCodes] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const generateCodes = async () => {
-      const {
-        data: { user },
-        error: userErr,
-      } = await supabase.auth.getUser();
-
-      if (userErr || !user) {
-        console.error('No user found:', userErr);
+    const generate = async () => {
+      const results = await generateRecoveryCodes();
+      if (results.error) {
+        console.error(results.error);
         onClose();
         return;
       }
 
-      // Check if codes already generated
-      const { data: userRow } = await supabase
-        .from('users')
-        .select('recovery_codes_generated')
-        .eq('id', user.id)
-        .single();
-
-      if (userRow?.recovery_codes_generated) {
-        console.warn('Recovery codes already generated');
-        onClose();
-        return;
-      }
-
-      const newCodes = Array.from({ length: 10 }, () =>
-        nanoid(10).toUpperCase(),
-      );
-      const hashedCodes = await Promise.all(newCodes.map(hashSHA256));
-
-      const { error: upsertError } = await supabase
-        .from('user_recovery_codes')
-        .upsert(
-          {
-            user_id: user.id,
-            codes: hashedCodes,
-            used_codes: [],
-          },
-          { onConflict: 'user_id' },
-        );
-
-      if (upsertError) {
-        console.error('Failed to store hashed codes:', upsertError.message);
-        onClose();
-        return;
-      }
-
-      await supabase
-        .from('users')
-        .update({
-          recovery_codes_generated: true,
-        })
-        .eq('id', user.id);
-
-      setCodes(newCodes);
+      setCodes(results.codes!);
       setLoading(false);
     };
 
-    generateCodes();
+    generate();
   }, []);
 
   const downloadCodes = () => {

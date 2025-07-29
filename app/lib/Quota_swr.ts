@@ -9,7 +9,7 @@ export function useQuota() {
   const shouldFetch = user?.id && initialized;
 
   const { data, error, isLoading, mutate } = useSWR(
-    shouldFetch ? 'user-quota' : null,
+    shouldFetch ? `user-quota-${user.id}` : null,
     async () => {
       const { data, error } = await supabase
         .from('users')
@@ -42,7 +42,6 @@ export function useQuota() {
         },
         (payload) => {
           if ('quota' in payload.new) {
-            // Optional: use mutate(payload.new, false) for instant update
             mutate(); // refetch quota using SWR
           }
         },

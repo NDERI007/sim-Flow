@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase/BrowserClient';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ShieldAlert } from 'lucide-react';
 
 export function PromptBanner() {
   const [show, setShow] = useState(false);
@@ -26,7 +27,6 @@ export function PromptBanner() {
       if (!error && data && !data.mfa_enabled) {
         setShow(true);
 
-        // Auto-dismiss after 10 seconds
         const timeout = setTimeout(() => {
           dismiss();
         }, 10000);
@@ -54,32 +54,38 @@ export function PromptBanner() {
           initial={{ y: -100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: -100, opacity: 0 }}
-          transition={{ type: 'spring', stiffness: 300, damping: 24 }}
-          className="fixed top-4 right-4 left-4 z-50 mx-auto max-w-md rounded-xl border border-zinc-700 bg-gray-900 p-4 text-white shadow-xl"
+          transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+          className="fixed top-4 left-1/2 z-50 w-[95%] max-w-xl -translate-x-1/2 rounded-2xl border border-zinc-700 bg-gray-900 p-4 shadow-2xl"
         >
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h4 className="text-base font-semibold">Protect your account</h4>
-              <p className="text-sm text-zinc-300">
-                Enable two-factor authentication to boost your account security.
-              </p>
+          <div className="flex items-start gap-4">
+            <div className="mt-1">
+              <ShieldAlert className="h-6 w-6 text-yellow-400" />
             </div>
-            <div className="mt-2 flex gap-2 sm:mt-0">
-              <button
-                onClick={() => {
-                  if (timer) clearTimeout(timer);
-                  window.location.href = '/mfa';
-                }}
-                className="rounded bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-500"
-              >
-                Enable MFA
-              </button>
-              <button
-                onClick={dismiss}
-                className="rounded border border-zinc-600 px-3 py-1.5 text-sm text-zinc-300 hover:bg-zinc-800"
-              >
-                Dismiss
-              </button>
+            <div className="flex-1">
+              <h4 className="text-base font-semibold text-white">
+                Protect your account
+              </h4>
+              <p className="mt-1 text-sm text-zinc-300">
+                Enable two-factor authentication to secure your login and
+                prevent unauthorized access.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <button
+                  onClick={() => {
+                    if (timer) clearTimeout(timer);
+                    window.location.href = '/mfa';
+                  }}
+                  className="rounded-full bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-500"
+                >
+                  Enable MFA
+                </button>
+                <button
+                  onClick={dismiss}
+                  className="rounded-full border border-zinc-600 bg-transparent px-4 py-1.5 text-sm text-zinc-300 transition hover:bg-zinc-800"
+                >
+                  Dismiss
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>
