@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import axios, { AxiosError } from 'axios';
+import Image from 'next/image';
 
 export default function SetupMfa({ onNext }: { onNext: () => void }) {
   const [qrCode, setQrCode] = useState<string | null>(null);
@@ -12,7 +13,7 @@ export default function SetupMfa({ onNext }: { onNext: () => void }) {
   useEffect(() => {
     const fetchMfaSetup = async () => {
       try {
-        const { data } = await axios.post('/api/mfa-setup');
+        const { data } = await axios.post('/api/mfa/setup');
         setQrCode(data.qrCode);
         setSecret(data.secret);
       } catch (err) {
@@ -51,11 +52,16 @@ export default function SetupMfa({ onNext }: { onNext: () => void }) {
 
       {qrCode && (
         <div className="flex flex-col items-center space-y-4">
-          <img
+          <Image
             src={qrCode}
             alt="MFA QR Code"
-            className="h-48 w-48 rounded-md border border-slate-700"
+            width={192} // w-48 = 12 * 16 = 192px
+            height={192} // h-48 = 12 * 16 = 192px
+            unoptimized //Because Next.js image optimization is designed for URLs it can proxy, not inline base64 strings. By setting unoptimized,
+            //“This image doesn't need optimization, just render it as-is.”
+            className="rounded-md border border-slate-700"
           />
+
           <p className="text-sm text-gray-400">Or enter this code manually:</p>
           <code className="rounded bg-gray-800 px-3 py-1 text-sm text-indigo-400">
             {secret}

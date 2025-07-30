@@ -105,7 +105,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Invalid code' }, { status: 400 });
     }
   } else if (type === 'backup') {
-    if (!code || typeof code !== 'string' || code.length < 6) {
+    if (!code || typeof code !== 'string') {
       return NextResponse.json(
         { error: 'Invalid backup code' },
         { status: 400 },
@@ -125,19 +125,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const matchedIndex = data.codes.indexOf(code);
-    if (matchedIndex === -1) {
+    const { codes, used_codes = [] } = data;
+
+    if (used_codes.includes(code)) {
       return NextResponse.json(
-        { error: 'Invalid or already used backup code' },
+        { error: 'This backup code has already been used' },
         { status: 400 },
       );
     }
 
-    // Consume the code
-    const updatedCodes = [...data.codes];
-    updatedCodes.splice(matchedIndex, 1);
-
-    const updatedUsed = data.used_codes ? [...data.used_codes, code] : [code];
+    // Remove the code from available codes
+    const updatedCodes = codes.filter((c) => c !== code);
+    const updatedUsed = [...used_codes, code];
 
     const { error: updateError } = await supabase
       .from('user_recovery_codes')
@@ -150,15 +149,8 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
-  } else {
-    return NextResponse.json(
-      { error: 'Unknown verification type' },
-      { status: 400 },
-    );
+
+    await redis.del(attemptKey);
+    return NextResponse.json({ success: true });
   }
-
-  // Clear user attempt key
-  await redis.del(attemptKey);
-
-  return NextResponse.json({ success: true });
 }

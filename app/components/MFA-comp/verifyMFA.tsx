@@ -1,7 +1,7 @@
 'use client';
 
-import { useRef, useState, useEffect } from 'react';
-import axios from 'axios';
+import { useRef, useState, useCallback } from 'react';
+import axios, { AxiosError } from 'axios';
 import { supabase } from '../../lib/supabase/BrowserClient';
 import { RecoveryCodesModal } from './codeRecModal';
 
@@ -23,6 +23,11 @@ export default function VerifyMfa({ onComplete }: { onComplete: () => void }) {
     }
   };
 
+  const handleClose = useCallback(() => {
+    setShowRecoveryModal(false);
+    onComplete();
+  }, [onComplete]);
+
   const handleKeyDown = (e: React.KeyboardEvent, index: number) => {
     if (e.key === 'Backspace' && !digits[index] && index > 0) {
       inputsRef.current[index - 1]?.focus();
@@ -39,7 +44,7 @@ export default function VerifyMfa({ onComplete }: { onComplete: () => void }) {
     setVerifying(true);
     setError('');
     try {
-      const res = await axios.post('/api/mfa-verify', { code });
+      const res = await axios.post('/api/mfa/verify-setup', { code });
       if (res.data.success) {
         setVerified(true);
         const {
@@ -56,13 +61,13 @@ export default function VerifyMfa({ onComplete }: { onComplete: () => void }) {
           if (!error && data?.recovery_codes_generated === false) {
             setShowRecoveryModal(true);
           }
-          window.location.href = '/admin';
         }
       } else {
         setError('Invalid or expired code');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to verify');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error: string }>;
+      setError(error.response?.data?.error || 'Failed to verify');
     } finally {
       setVerifying(false);
     }
@@ -104,15 +109,7 @@ export default function VerifyMfa({ onComplete }: { onComplete: () => void }) {
         <p className="font-medium text-green-400">MFA setup complete!</p>
       )}
 
-      {showRecoveryModal && (
-        <RecoveryCodesModal
-          onClose={() => {
-            setShowRecoveryModal(false);
-            onComplete();
-            window.location.href = '/admin';
-          }}
-        />
-      )}
+      {showRecoveryModal && <RecoveryCodesModal onClose={handleClose} />}
     </div>
   );
 }

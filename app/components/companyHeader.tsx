@@ -10,7 +10,7 @@ export default function CompanyHeader() {
           href="/admin"
           className="text-lg font-bold text-white transition hover:text-blue-300"
         >
-          KE-jour
+          Boushu
         </Link>
       </div>
     </header>

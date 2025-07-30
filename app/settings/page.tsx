@@ -87,78 +87,80 @@ export default function MfaSettings() {
   if (loading) return null;
 
   return (
-    <div className="mx-auto mt-10 max-w-2xl px-4">
-      <Card
-        style={{
-          backgroundColor: '#1e1b2e',
-          color: 'white',
-          borderRadius: '16px',
-          padding: '24px',
-        }}
-        elevation={4}
-      >
-        <CardContent>
-          <Typography variant="h6" gutterBottom>
-            Multi-Factor Authentication
-          </Typography>
+    <div className="min-h-screen bg-gray-900">
+      <div className="mx-auto max-w-2xl px-4">
+        <Card
+          sx={{
+            backgroundColor: '#1e1b2e',
+            color: 'white',
+            borderRadius: '16px',
+            p: 3,
+          }}
+          elevation={4}
+        >
+          <CardContent>
+            <Typography variant="h6" gutterBottom>
+              Multi-Factor Authentication
+            </Typography>
 
-          {step === 'setup' && <SetupMfa onNext={() => setStep('verify')} />}
-          {step === 'verify' && (
-            <VerifyMfa
-              onComplete={() => {
-                setMfaEnabled(true);
-                setStep(null);
-              }}
-            />
-          )}
+            {step === 'setup' && <SetupMfa onNext={() => setStep('verify')} />}
+            {step === 'verify' && (
+              <VerifyMfa
+                onComplete={() => {
+                  setMfaEnabled(true);
+                  setStep(null);
+                }}
+              />
+            )}
 
-          {!step && (
-            <>
-              {mfaEnabled ? (
-                <>
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={handleDisableMfa}
-                    disabled={disabling}
-                    fullWidth
-                    style={{ marginBottom: 12 }}
-                  >
-                    {disabling ? (
-                      <CircularProgress size={20} color="inherit" />
-                    ) : (
-                      'Disable MFA'
-                    )}
-                  </Button>
+            {!step && (
+              <>
+                {mfaEnabled ? (
+                  <>
+                    <Button
+                      variant="contained"
+                      color="secondary"
+                      onClick={handleDisableMfa}
+                      disabled={disabling}
+                      fullWidth
+                      style={{ marginBottom: 12 }}
+                    >
+                      {disabling ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        'Disable MFA'
+                      )}
+                    </Button>
 
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      onClick={handleRegenerateCodes}
+                      disabled={regenerating}
+                      fullWidth
+                    >
+                      {regenerating ? (
+                        <CircularProgress size={20} color="inherit" />
+                      ) : (
+                        'Regenerate Recovery Codes'
+                      )}
+                    </Button>
+                  </>
+                ) : (
                   <Button
                     variant="contained"
                     color="primary"
-                    onClick={handleRegenerateCodes}
-                    disabled={regenerating}
+                    onClick={() => setStep('setup')}
                     fullWidth
                   >
-                    {regenerating ? (
-                      <CircularProgress size={20} color="inherit" />
-                    ) : (
-                      'Regenerate Recovery Codes'
-                    )}
+                    Enable MFA
                   </Button>
-                </>
-              ) : (
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={() => setStep('setup')}
-                  fullWidth
-                >
-                  Enable MFA
-                </Button>
-              )}
-            </>
-          )}
-        </CardContent>
-      </Card>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

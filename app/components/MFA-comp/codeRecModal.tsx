@@ -21,7 +21,7 @@ export function RecoveryCodesModal({ onClose }: { onClose: () => void }) {
     };
 
     generate();
-  }, []);
+  }, [onClose]);
 
   const downloadCodes = () => {
     const blob = new Blob([codes.join('\n')], { type: 'text/plain' });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '../../lib/supabase/createClient';
+import { supabase } from '../../../lib/supabase/createClient';
 import { DateTime } from 'luxon';
 import { SignJWT } from 'jose';
 

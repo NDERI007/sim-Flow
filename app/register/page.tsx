@@ -17,7 +17,7 @@ export default function EmailSubmissionForm() {
     setMessage('');
 
     try {
-      await axios.post('/api/request-registration', { email, name });
+      await axios.post('/api/register/setup', { email, name });
       setStatus('success');
       setMessage('Request submitted successfully!');
     } catch (err) {

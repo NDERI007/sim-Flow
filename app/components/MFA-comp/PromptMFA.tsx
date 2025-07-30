@@ -1,15 +1,22 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase/BrowserClient';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ShieldAlert } from 'lucide-react';
 
 export function PromptBanner() {
   const [show, setShow] = useState(false);
-  const [timer, setTimer] = useState<NodeJS.Timeout | null>(null);
+
+  // Define dismiss before useEffect so it's in scope
+  const dismiss = useCallback(() => {
+    sessionStorage.setItem('mfa_prompt_dismissed', 'true');
+    setShow(false);
+  }, []);
 
   useEffect(() => {
+    let timeout: NodeJS.Timeout;
+
     const checkMfa = async () => {
       if (sessionStorage.getItem('mfa_prompt_dismissed')) return;
 
@@ -26,26 +33,18 @@ export function PromptBanner() {
 
       if (!error && data && !data.mfa_enabled) {
         setShow(true);
-
-        const timeout = setTimeout(() => {
+        timeout = setTimeout(() => {
           dismiss();
         }, 10000);
-        setTimer(timeout);
       }
     };
 
     checkMfa();
 
     return () => {
-      if (timer) clearTimeout(timer);
+      if (timeout) clearTimeout(timeout);
     };
-  }, []);
-
-  const dismiss = () => {
-    sessionStorage.setItem('mfa_prompt_dismissed', 'true');
-    setShow(false);
-    if (timer) clearTimeout(timer);
-  };
+  }, [dismiss]); // `dismiss` is safe to include now
 
   return (
     <AnimatePresence>
@@ -72,7 +71,7 @@ export function PromptBanner() {
               <div className="mt-4 flex flex-wrap gap-3">
                 <button
                   onClick={() => {
-                    if (timer) clearTimeout(timer);
+                    dismiss();
                     window.location.href = '/mfa';
                   }}
                   className="rounded-full bg-indigo-600 px-4 py-1.5 text-sm font-medium text-white transition hover:bg-indigo-500"

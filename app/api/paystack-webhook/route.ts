@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { createClient } from '@supabase/supabase-js';
+import { notifyAdmin } from '../../lib/Notify/QuotaFailure';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -8,9 +9,6 @@ const supabase = createClient(
 );
 
 export async function POST(req: NextRequest) {
-  // Must read raw body first
-  const startTime = Date.now();
-
   const rawBody = await req.text();
   const signature = req.headers.get('x-paystack-signature');
   type ChargeEvent = {
@@ -53,7 +51,7 @@ export async function POST(req: NextRequest) {
   try {
     event = JSON.parse(rawBody) as PaystackEvent;
   } catch (err) {
-    console.error('🔴 Failed to parse webhook body:', err);
+    console.error('Failed to parse webhook body:', err);
     return NextResponse.json({ message: 'Invalid payload' }, { status: 400 });
   }
 
@@ -105,14 +103,16 @@ export async function POST(req: NextRequest) {
     }
 
     if (refundError) {
-      console.error('❌ Failed to reverse quota:', refundError.message);
+      console.error('Failed to reverse quota:', refundError.message);
       //Log the actual error to quota_logs
-      await supabase.from('quota_logs').insert({
-        user_id: refundedPurchase.user_id,
-        amount: -refundedPurchase.credits,
-        reason: 'purchase_refund',
-        related_id: refundedPurchase.id,
-        error: refundError.message ?? 'Unknown refund error',
+      await notifyAdmin({
+        subject: 'Refund Quota Reversal Failed',
+        body: `
+    <p>Transaction: <strong>${reference}</strong></p>
+    <p>User ID: ${refundedPurchase.user_id}</p>
+    <p>Credits: ${refundedPurchase.credits}</p>
+    <p>Error: ${refundError.message}</p>
+  `,
       });
 
       return NextResponse.json(
@@ -130,8 +130,6 @@ export async function POST(req: NextRequest) {
       .select('id, user_id, credits, status')
       .eq('transaction_ref', reference)
       .single();
-    const afterPurchaseFetch = Date.now();
-    console.log(`Fetch purchase: ${afterPurchaseFetch - startTime}ms`);
 
     if (fetchError) {
       console.error('Failed to fetch purchase:', fetchError.message);
@@ -222,16 +220,23 @@ export async function POST(req: NextRequest) {
         purchase.credits,
         purchase.id,
       );
-      const afterRPC = Date.now();
-      console.log(`🧠 Apply quota RPC: ${afterRPC - afterPurchaseFetch}ms`);
+
       if (!success) {
         console.warn(
           `Manual intervention may be needed for quota on tx: ${purchase.id}`,
         );
+        await notifyAdmin({
+          subject: 'Quota Application Failed After Purchase',
+          body: `
+    <p>Transaction: <strong>${reference}</strong></p>
+    <p>User ID: ${purchase.user_id}</p>
+    <p>Credits: ${purchase.credits}</p>
+    <p>Purchase ID: ${purchase.id}</p>
+    <p>Quota application failed after multiple retries.</p>
+  `,
+        });
       }
     }
-    const duration = Date.now() - startTime;
-    console.log(`⏱️ Webhook processed in ${duration}ms`);
 
     return NextResponse.json({ message: 'Processed' }, { status: 200 });
   }

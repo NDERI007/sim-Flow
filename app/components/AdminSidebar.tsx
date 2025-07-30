@@ -75,6 +75,9 @@ export default function AdminSidebar() {
             <X className="h-6 w-6" />
           </button>
 
+          {/* App Name */}
+          <h1 className="mb-6 text-xl font-bold text-white">Boushu</h1>
+
           {/* Navigation */}
           <nav className="space-y-3">
             {navItems.map(({ label, href }) => (

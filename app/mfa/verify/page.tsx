@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { useRouter } from 'next/navigation';
 
 export default function MfaVerifyPage() {
@@ -55,8 +55,9 @@ export default function MfaVerifyPage() {
       } else {
         setError('Invalid or expired code');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to verify');
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ error: string }>;
+      setError(error.response?.data?.error || 'Failed to verify');
     } finally {
       setVerifying(false);
     }

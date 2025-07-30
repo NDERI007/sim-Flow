@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import speakeasy from 'speakeasy';
 import qrcode from 'qrcode';
-import { ServerClient } from '../../lib/supabase/serverClient';
+import { ServerClient } from '../../../lib/supabase/serverClient';
 
 async function SupabaseRequest(req: NextRequest, res: NextResponse) {
   const supabase = ServerClient(req, res);
