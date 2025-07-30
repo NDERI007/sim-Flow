@@ -33,6 +33,7 @@ export async function middleware(request: NextRequest) {
     '/templates',
     '/admin',
     '/scheduled',
+    '/mfa',
   ];
 
   const isProtected = protectedRoutes.some((path) =>

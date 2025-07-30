@@ -7,6 +7,13 @@ import {
 } from '../components/dash-comp/scheduledSends';
 import { supabase } from '../lib/supabase/BrowserClient';
 
+interface RawScheduledMessage {
+  id: string;
+  message: string;
+  scheduled_at: string;
+  groups: { group_name: string }[];
+}
+
 const fetchScheduledMessages = async (): Promise<ScheduledMessage[]> => {
   const {
     data: { user },
@@ -23,9 +30,11 @@ const fetchScheduledMessages = async (): Promise<ScheduledMessage[]> => {
 
   if (error) throw error;
 
-  return (data as any[]).map((msg) => ({
-    ...msg,
-    group_names: msg.groups.map((g: any) => g.group_name),
+  return (data as RawScheduledMessage[]).map((msg) => ({
+    id: msg.id,
+    message: msg.message,
+    scheduled_at: msg.scheduled_at,
+    group_names: msg.groups.map((g) => g.group_name),
   }));
 };
 

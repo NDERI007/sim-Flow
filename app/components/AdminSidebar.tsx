@@ -16,6 +16,7 @@ export default function AdminSidebar() {
     { href: '/templates', label: 'Templates' },
     { href: '/purchase', label: 'Pricing' },
     { href: '/Quota-Usage', label: 'Quota Usage' },
+    { href: '/settings', label: 'Enable MFA' },
   ];
 
   // Lock scroll
@@ -73,6 +74,9 @@ export default function AdminSidebar() {
           >
             <X className="h-6 w-6" />
           </button>
+
+          {/* App Name */}
+          <h1 className="mb-6 text-xl font-bold text-white">Boushu</h1>
 
           {/* Navigation */}
           <nav className="space-y-3">

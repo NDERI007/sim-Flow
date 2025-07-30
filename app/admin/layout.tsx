@@ -1,4 +1,5 @@
 import AdminSidebar from '../components/AdminSidebar';
+import { PromptBanner } from '../components/MFA-comp/PromptMFA';
 
 export default function AdminLayout({
   children,
@@ -8,7 +9,10 @@ export default function AdminLayout({
   return (
     <div className="flex h-screen flex-col bg-gray-900 text-gray-100 md:flex-row">
       <AdminSidebar />
-      <main className="flex-1 overflow-y-auto p-6 md:ml-64">{children}</main>
+      <main className="flex-1 overflow-y-auto p-6 md:ml-64">
+        <PromptBanner />
+        {children}
+      </main>
     </div>
   );
 }

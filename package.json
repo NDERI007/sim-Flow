@@ -12,6 +12,9 @@
     "clear:queue": "ts-node scripts/clearJobs.ts"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/material": "^7.2.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.50.0",
     "@vercel/speed-insights": "^1.2.0",
@@ -26,6 +29,7 @@
     "jose": "^6.0.11",
     "lucide-react": "^0.516.0",
     "luxon": "^3.6.1",
+    "nanoid": "^5.1.5",
     "next": "15.3.3",
     "papaparse": "^5.5.3",
     "qrcode": "^1.5.4",
@@ -45,8 +49,10 @@
     "@types/express": "^5.0.3",
     "@types/luxon": "^3.6.2",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/speakeasy": "^2.0.10",
     "eslint": "^9",
     "eslint-config-next": "15.3.3",
     "prettier-plugin-tailwindcss": "^0.6.12",

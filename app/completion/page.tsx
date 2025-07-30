@@ -7,7 +7,6 @@ import { SenderIdInfo } from '../components/senderModal';
 
 export default function FinishRegistrationPage() {
   const router = useRouter();
-  const [senderId, setSenderId] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -19,9 +18,8 @@ export default function FinishRegistrationPage() {
 
     try {
       const res = await axios.post(
-        '/api/complete-registration',
+        '/api/register/finalize',
         {
-          sender_id: senderId,
           password,
         },
         {

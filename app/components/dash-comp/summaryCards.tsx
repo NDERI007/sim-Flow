@@ -3,15 +3,19 @@
 import { AlertTriangle, BarChart, MessageCircle } from 'lucide-react';
 import { useQuota } from '../../lib/Quota_swr';
 import { useMetrics } from '../../lib/metrics';
+import { useAuthStore } from '../../lib/AuthStore';
 
 export default function SummaryCards() {
+  const user = useAuthStore((s) => s.user);
+  const userId = user?.id;
+
   const { quota, isLoading: quotaLoading } = useQuota();
   const { sentToday, failedCount } = useMetrics();
 
   const cards = [
     {
       label: 'Quota Remaining',
-      value: quotaLoading ? '...' : (quota ?? 'N/A'),
+      value: quotaLoading ? '...' : quota,
       icon: BarChart,
       color:
         quota == null || quotaLoading
@@ -20,7 +24,7 @@ export default function SummaryCards() {
             ? 'text-red-300'
             : quota <= 10
               ? 'text-yellow-300'
-              : ' text-green-300',
+              : 'text-green-300',
       bgColor:
         quota == null || quotaLoading
           ? 'bg-gray-800'
@@ -49,10 +53,9 @@ export default function SummaryCards() {
 
   return (
     <div
+      key={userId} // Forces fresh render per user switch
       className="grid gap-6"
-      style={{
-        gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-      }}
+      style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))' }}
     >
       {cards.map(
         ({ label, value, icon: Icon, color, bgColor, showUpgrade }) => (

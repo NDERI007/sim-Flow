@@ -20,7 +20,7 @@ export default function VerifyPage() {
     setStatus('checking');
 
     try {
-      const res = await axios.post('/api/verify-otp', { email, otp });
+      const res = await axios.post('/api/register/verify-otp', { email, otp });
       if (res.data?.ok) {
         router.push('/completion');
       } else {
