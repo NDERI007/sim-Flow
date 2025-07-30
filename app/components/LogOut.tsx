@@ -3,13 +3,13 @@
 import { supabase } from '../lib/supabase/BrowserClient';
 import { LogOut } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { mutate } from 'swr';
+import { clearSessionCache } from '../lib/CacheClear/clear';
 
 export default function LogOutButton() {
   const router = useRouter();
   const handleLogOut = async () => {
     await supabase.auth.signOut();
-    mutate(() => true, undefined, { revalidate: false });
+    clearSessionCache();
     router.push('/');
   };
 

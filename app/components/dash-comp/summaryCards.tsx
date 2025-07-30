@@ -3,7 +3,7 @@
 import { AlertTriangle, BarChart, MessageCircle } from 'lucide-react';
 import { useQuota } from '../../lib/Quota_swr';
 import { useMetrics } from '../../lib/metrics';
-import { useAuthStore } from '../../lib/AuthStore';
+import { useAuthStore } from '../../lib/WithAuth/AuthStore';
 
 export default function SummaryCards() {
   const user = useAuthStore((s) => s.user);

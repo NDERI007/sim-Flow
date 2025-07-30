@@ -10,7 +10,7 @@ import {
 } from '../lib/templates';
 import TemplateForm from '../components/template/templateForm';
 import TemplateCard from '../components/template/templateCard';
-import { useAuthStore } from '../lib/AuthStore';
+import { useAuthStore } from '../lib/WithAuth/AuthStore';
 
 type Template = {
   id: string;

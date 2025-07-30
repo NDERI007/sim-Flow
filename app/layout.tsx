@@ -4,8 +4,9 @@ import { Inter } from 'next/font/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
 import CompanyHeader from './components/companyHeader';
 import { usePathname } from 'next/navigation';
-import { AuthWrapper } from './lib/AuthListner';
+
 import { Toaster } from 'sonner';
+import { AuthWrapper } from './lib/WithAuth/AuthListner';
 
 const inter = Inter({
   subsets: ['latin'],

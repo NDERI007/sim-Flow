@@ -9,7 +9,7 @@ export async function fetchGroupContacts(
   });
 
   if (error) {
-    console.error('❌ Supabase RPC Error in fetchGroupContacts:', {
+    console.error('Supabase RPC Error in fetchGroupContacts:', {
       message: error.message,
       details: error.details,
       hint: error.hint,

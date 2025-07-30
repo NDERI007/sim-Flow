@@ -14,10 +14,7 @@ async function SupabaseRequest(req: NextRequest, res: NextResponse) {
     error,
   } = await supabase.auth.getUser();
 
-  if (error || !user) {
-    return { error: 'Invalid user' };
-  }
-
+  if (error || !user) return { error: 'Invalid user' };
   return { supabase, user };
 }
 
@@ -36,10 +33,7 @@ export async function POST(req: NextRequest) {
 
   const attemptKey = `mfa-attempts:${user.id}`;
   const attempts = await redis.incr(attemptKey);
-  if (attempts === 1) {
-    await redis.expire(attemptKey, 60); // 1-minute window
-  }
-
+  if (attempts === 1) await redis.expire(attemptKey, 60);
   if (attempts > 5) {
     return NextResponse.json(
       { error: 'Too many attempts. Try again in a minute.' },
@@ -47,7 +41,6 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  //Fetch temp secret
   const { data, error: fetchError } = await supabase
     .from('users')
     .select('mfa_temp_secret')
@@ -61,19 +54,21 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Verify code
-  const isVerified = speakeasy.totp.verify({
+  // DEBUG LOGS (optional during development)
+  console.log('🔐 Verifying code against secret:', data.mfa_temp_secret);
+
+  const delta = speakeasy.totp.verifyDelta({
     secret: data.mfa_temp_secret,
     encoding: 'base32',
     token: code,
-    window: 1,
+    window: 2, // Allow 2-step leeway
   });
 
-  if (!isVerified) {
+  if (!delta) {
     return NextResponse.json({ error: 'Invalid code' }, { status: 400 });
   }
 
-  await supabase
+  const { error: updateError } = await supabase
     .from('users')
     .update({
       mfa_enabled: true,
@@ -82,7 +77,13 @@ export async function POST(req: NextRequest) {
     })
     .eq('id', user.id);
 
-  await redis.del(attemptKey);
+  if (updateError) {
+    return NextResponse.json(
+      { error: 'Failed to enable MFA' },
+      { status: 500 },
+    );
+  }
 
+  await redis.del(attemptKey);
   return NextResponse.json({ success: true });
 }

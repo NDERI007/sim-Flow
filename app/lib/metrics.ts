@@ -1,6 +1,6 @@
 import useSWR from 'swr';
 import axios from 'axios';
-import { useAuthStore } from './AuthStore';
+import { useAuthStore } from './WithAuth/AuthStore';
 
 export function useMetrics() {
   const user = useAuthStore((s) => s.user);

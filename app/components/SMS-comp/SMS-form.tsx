@@ -7,8 +7,8 @@ import { CalendarClock } from 'lucide-react';
 import { useSmsStore } from '../../lib/smsStore';
 import { fetchTemplates } from '../../lib/templates';
 import useSWR from 'swr';
-import { useAuthStore } from '../../lib/AuthStore';
 import TemplateDropdown from '../template/templateDrop';
+import { useAuthStore } from '../../lib/WithAuth/AuthStore';
 
 export default function SmsForm() {
   const {

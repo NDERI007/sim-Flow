@@ -6,6 +6,9 @@ import { ServerClient } from '../../../lib/supabase/serverClient';
 const redis = new Redis(process.env.REDIS_URL!, {
   tls: process.env.REDIS_URL?.includes('upstash') ? {} : undefined,
 });
+redis.on('error', (err) => {
+  console.error('Redis connection error:', err);
+});
 
 // Util to get IP (compatible with Vercel, etc.)
 function getIp(req: NextRequest): string {
@@ -94,16 +97,29 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const isVerified = speakeasy.totp.verify({
+    const delta = speakeasy.totp.verifyDelta({
       secret: data.totp_secret,
       encoding: 'base32',
       token: code,
       window: 1,
     });
 
-    if (!isVerified) {
-      return NextResponse.json({ error: 'Invalid code' }, { status: 400 });
+    if (!delta) {
+      return NextResponse.json(
+        { error: 'Invalid code. It may have expired or been mistyped.' },
+        { status: 400 },
+      );
     }
+
+    // Optional: log or debug timing drift
+    if (delta.delta !== 0) {
+      console.warn(`TOTP accepted with time drift: delta=${delta.delta}`);
+    }
+
+    await redis.del(attemptKey); // Clear user-specific attempts
+    await redis.del(ipKey); // Clear IP-specific attempts
+
+    return NextResponse.json({ success: true });
   } else if (type === 'backup') {
     if (!code || typeof code !== 'string') {
       return NextResponse.json(
@@ -153,4 +169,8 @@ export async function POST(req: NextRequest) {
     await redis.del(attemptKey);
     return NextResponse.json({ success: true });
   }
+  return NextResponse.json(
+    { error: 'Invalid verification type' },
+    { status: 400 },
+  );
 }

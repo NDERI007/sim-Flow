@@ -4,8 +4,9 @@ import ExcelJS from 'exceljs';
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase/BrowserClient';
 import { validateAndFormatKenyanNumber } from '../../lib/validator/phoneN';
-import { useAuthStore } from '../../lib/AuthStore';
+
 import { mutate } from 'swr';
+import { useAuthStore } from '../../lib/WithAuth/AuthStore';
 
 type Contact = {
   name: string;

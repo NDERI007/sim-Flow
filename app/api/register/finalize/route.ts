@@ -84,10 +84,12 @@ export async function POST(req: NextRequest) {
     email,
     name: pending.name,
     quota: 0,
-    role: 'admin',
+    role: 'member',
   });
 
   if (insertError) {
+    console.error('Insert user error:', insertError); // Helpful for debugging
+
     return NextResponse.json(
       { error: 'Failed to create user profile.' },
       { status: 500 },

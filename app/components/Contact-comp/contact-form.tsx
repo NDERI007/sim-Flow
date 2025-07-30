@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { mutate } from 'swr';
-import { useAuthStore } from '../../lib/AuthStore';
 import { supabase } from '../../lib/supabase/BrowserClient';
+import { useAuthStore } from '../../lib/WithAuth/AuthStore';
 
 interface Contact {
   name: string;

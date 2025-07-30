@@ -2,9 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useAuthStore } from '../lib/AuthStore';
+import { useAuthStore } from './AuthStore';
 
-export function withAuthGuard<P>(
+export function AuthGuard<P>(
   WrappedComponent: (props: P) => React.ReactElement,
   options: { redirectTo?: string; allowExpired?: boolean } = {},
 ) {

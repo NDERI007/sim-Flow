@@ -2,7 +2,7 @@
 import Link from 'next/link';
 import { CalendarClock, Send } from 'lucide-react';
 import SummaryCards from '../components/dash-comp/summaryCards';
-import { withAuthGuard } from '../components/WithAuth';
+import { AuthGuard } from '../lib/WithAuth/AuthGuard';
 
 function Dashboard() {
   return (
@@ -47,4 +47,4 @@ function Dashboard() {
     </div>
   );
 }
-export default withAuthGuard(Dashboard);
+export default AuthGuard(Dashboard);

@@ -41,9 +41,7 @@ export default function EmailSubmissionForm() {
         className="w-full max-w-md space-y-6 rounded-xl bg-white p-6 shadow-lg dark:bg-gray-800"
       >
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-800 dark:text-white">
-            Get Started
-          </h1>
+          <h1 className="text-2xl font-semibold text-gray-800">Get Started</h1>
           <p className="mt-1 text-sm text-gray-500 dark:text-gray-400">
             Enter your details to begin the registration process.
           </p>

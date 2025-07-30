@@ -1,7 +1,7 @@
-import { supabase } from '../../lib/supabase/createClient';
 import { Resend } from 'resend';
 import { DateTime } from 'luxon';
 import { NextRequest, NextResponse } from 'next/server';
+import { supabase } from '../../../lib/supabase/createClient';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // ✅ Rate limit check
+  // Rate limit check
   const oneHourAgo = DateTime.now().toUTC().minus({ hours: 1 }).toISO();
 
   const { count: recentAttempts, error: rateError } = await supabase
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
         <p>Hello ${name},</p>
         <p>Your OTP is:</p>
         <h2>${otp}</h2>
-        <a href="${process.env.NEXT_PUBLIC_BASE_URL}/verify?email=${encodeURIComponent(email)}" target="_blank">Complete Registration</a>
+        <a href="http://localhost:3000/verify?email=${encodeURIComponent(email)}" target="_blank">Complete Registration</a>
   
         <p>It will expire at <strong>${eatExpiry.toFormat('hh:mm a')} EAT</strong>.</p>
         <p>If you didn’t request this, you can ignore this email.</p>
