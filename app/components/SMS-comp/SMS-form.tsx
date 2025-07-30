@@ -1,106 +1,118 @@
 'use client';
-
 import { useState } from 'react';
-import ContactGroupSelector from './ContactSelcector';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { fetchTemplates } from '../../lib/templates';
+import { useAuthStore } from '../../lib/WithAuth/AuthStore';
+import useSWR from 'swr';
 import axios from 'axios';
 import { CalendarClock } from 'lucide-react';
-import { useSmsStore } from '../../lib/smsStore';
-import { fetchTemplates } from '../../lib/templates';
-import useSWR from 'swr';
 import TemplateDropdown from '../template/templateDrop';
-import { useAuthStore } from '../../lib/WithAuth/AuthStore';
+import ContactGroupSelector from './ContactSelcector';
+import { smsFormSchema, SmsFormValues } from '../../lib/schema/sms';
 
 export default function SmsForm() {
-  const {
-    manualNumbers,
-    setManualNumbers,
-    selectedGroup,
-    message,
-    setMessage,
-    resetForm,
-  } = useSmsStore();
+  const [feedback, setFeedback] = useState('');
   const initialized = useAuthStore((s) => s.initialized);
+
   const {
     data: templates = [],
     isLoading: loadingTemplates,
     error: templatesError,
-  } = useSWR(initialized ? 'templates' : null, fetchTemplates, {
-    revalidateOnFocus: false,
+  } = useSWR(initialized ? 'templates' : null, fetchTemplates);
+
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    reset,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<SmsFormValues>({
+    resolver: zodResolver(smsFormSchema),
+    defaultValues: {
+      manualNumbers: '',
+      message: '',
+      scheduledAt: '',
+      selectedGroup: [],
+    },
   });
 
-  const [loading, setLoading] = useState(false);
-  const [feedback, setFeedback] = useState('');
-  const [scheduledAt, setScheduledAt] = useState('');
+  const selectedGroup = watch('selectedGroup');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const manualList = manualNumbers
-      .split(/[\n,]+/)
-      .map((n) => n.trim())
-      .filter(Boolean);
-
-    const contactGroupIDs = selectedGroup.map((group) => group.id);
+  const onSubmit = async (data: SmsFormValues) => {
+    const manualList =
+      data.manualNumbers
+        ?.split(/[\n,]+/)
+        .map((n) => n.trim())
+        .filter(Boolean) ?? [];
 
     if (
-      !message.trim() ||
-      (manualList.length === 0 && contactGroupIDs.length === 0)
+      !data.message.trim() ||
+      (manualList.length === 0 && selectedGroup.length === 0)
     ) {
       setFeedback(
-        '❌ Message and at least one phone number or group is required.',
+        'Message and at least one phone number or group is required.',
       );
       return;
     }
 
-    setLoading(true);
-    setFeedback('');
-
     try {
       const res = await axios.post('/api/send-sms', {
         to_number: manualList,
-        message,
-        scheduledAt: scheduledAt || null,
-        contact_group_ids: contactGroupIDs.length > 0 ? contactGroupIDs : null,
+        message: data.message,
+        scheduledAt: data.scheduledAt || null,
+        contact_group_ids: selectedGroup.length > 0 ? selectedGroup : null,
       });
 
       if (res.status !== 200) {
         throw new Error(res.data?.error || 'Failed to send SMS');
       }
 
-      setFeedback('✅ Message queued successfully!');
-      setScheduledAt('');
-      resetForm();
+      setFeedback('Message queued successfully!');
+      reset({
+        manualNumbers: '',
+        message: '',
+        scheduledAt: '',
+        selectedGroup: [],
+      });
     } catch (err) {
-      if (err instanceof Error) {
-        setFeedback(`❌ ${err.message}`);
-      } else {
-        setFeedback('Unexpected error occurred');
-      }
-    } finally {
-      setLoading(false);
+      const msg =
+        err instanceof Error ? err.message : 'Unexpected error occurred';
+      setFeedback(`${msg}`);
     }
   };
 
   return (
     <form
-      onSubmit={handleSubmit}
+      onSubmit={handleSubmit(onSubmit)}
       className="space-y-6 rounded-xl bg-slate-950 p-6 text-gray-200 shadow-xl"
     >
-      <ContactGroupSelector />
+      <ContactGroupSelector
+        selectedGroup={selectedGroup}
+        onChange={(groupIds) =>
+          setValue('selectedGroup', groupIds, { shouldValidate: true })
+        }
+      />
+
       <div>
         <label className="mb-2 block text-sm font-medium text-gray-500">
           Phone Numbers
         </label>
         <textarea
-          value={manualNumbers}
-          onChange={(e) => setManualNumbers(e.target.value)}
+          {...register('manualNumbers')}
           placeholder="Enter phone numbers separated by commas or new lines"
           className="w-full rounded-lg bg-gray-900 px-4 py-3 text-sm text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-pink-900"
           rows={5}
         />
+        {errors.manualNumbers && (
+          <p className="text-sm text-red-400">{errors.manualNumbers.message}</p>
+        )}
+
         <TemplateDropdown
           templates={templates}
           loading={loadingTemplates}
-          onSelect={(template) => setMessage(template.content)}
+          onSelect={(template) => setValue('message', template.content)}
           error={templatesError}
         />
 
@@ -108,34 +120,26 @@ export default function SmsForm() {
           Message
         </label>
         <textarea
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
+          {...register('message')}
           required
           className="w-full rounded-lg bg-gray-900 p-3 text-white placeholder-gray-400 outline-none focus:ring-2 focus:ring-pink-900"
           rows={5}
           placeholder="Type your message here..."
         />
+        {errors.message && (
+          <p className="text-sm text-red-400">{errors.message.message}</p>
+        )}
 
         <label className="mt-4 mb-2 flex items-center gap-2 text-sm font-medium text-gray-500">
           <CalendarClock size={20} /> Schedule for
         </label>
         <input
           type="datetime-local"
-          name="scheduled_at"
-          value={scheduledAt}
-          onChange={(e) => setScheduledAt(e.target.value)}
+          {...register('scheduledAt')}
           className="w-full rounded-md bg-[#1a1a1a] p-2 text-white outline-none focus:ring-2 focus:ring-pink-900"
         />
-        {scheduledAt && (
-          <button
-            type="button"
-            onClick={() => setScheduledAt('')}
-            className="mt-2 text-sm text-pink-300 underline"
-          >
-            ❌ Clear schedule
-          </button>
-        )}
       </div>
+
       {feedback && (
         <p
           className={`font-medium ${
@@ -148,10 +152,10 @@ export default function SmsForm() {
 
       <button
         type="submit"
-        disabled={loading}
+        disabled={isSubmitting}
         className="w-full cursor-pointer rounded-lg bg-pink-900 py-3 font-semibold text-white transition duration-150 ease-in-out hover:bg-pink-800 focus:ring-2 focus:ring-pink-500 focus:outline-none active:scale-95 active:bg-pink-950 disabled:cursor-not-allowed disabled:opacity-50"
       >
-        {loading ? 'Sending...' : 'Send SMS'}
+        {isSubmitting ? 'Sending...' : 'Send SMS'}
       </button>
     </form>
   );

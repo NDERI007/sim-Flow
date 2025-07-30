@@ -1,4 +1,3 @@
-// store/smsStore.ts
 import { create } from 'zustand';
 
 export type Contact = {

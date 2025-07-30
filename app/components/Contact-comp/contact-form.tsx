@@ -1,26 +1,15 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { mutate } from 'swr';
 import { supabase } from '../../lib/supabase/BrowserClient';
 import { useAuthStore } from '../../lib/WithAuth/AuthStore';
-
-interface Contact {
-  name: string;
-  phone: string;
-}
-
-interface ContactGroup {
-  id: string;
-  group_name: string;
-  contacts: {
-    name: string;
-    phone: string;
-  }[];
-}
+import { ContactGroup, ContactGroupSchema } from '../../lib/schema/contact';
 
 interface Props {
-  editingGroup: ContactGroup | null;
+  editingGroup: (ContactGroup & { id: string }) | null;
   setEditingGroup: (group: ContactGroup | null) => void;
   onClose: () => void;
 }
@@ -32,49 +21,43 @@ export default function ContactGroupForm({
 }: Props) {
   const { user } = useAuthStore();
   const userId = user?.id;
-
-  const [groupName, setGroupName] = useState('');
-  const [contacts, setContacts] = useState<Contact[]>([
-    { name: '', phone: '' },
-  ]);
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<ContactGroup>({
+    resolver: zodResolver(ContactGroupSchema),
+    defaultValues: {
+      group_name: '',
+      contacts: [{ name: '', phone: '' }],
+    },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: 'contacts',
+  });
 
   useEffect(() => {
     if (editingGroup) {
-      setGroupName(editingGroup.group_name);
-      setContacts(
-        editingGroup.contacts.map((c) => ({
-          name: c.name,
-          phone: c.phone,
-        })),
-      );
+      reset({
+        group_name: editingGroup.group_name,
+        contacts: editingGroup.contacts,
+      });
     } else {
-      setGroupName('');
-      setContacts([{ name: '', phone: '' }]);
+      reset({
+        group_name: '',
+        contacts: [{ name: '', phone: '' }],
+      });
     }
-  }, [editingGroup]);
+  }, [editingGroup, reset]);
 
-  const handleContactChange = (
-    index: number,
-    field: 'name' | 'phone',
-    value: string,
-  ) => {
-    setContacts((prev) =>
-      prev.map((c, i) => (i === index ? { ...c, [field]: value } : c)),
-    );
-  };
-
-  const addContactRow = () => {
-    setContacts((prev) => [...prev, { name: '', phone: '' }]);
-  };
-
-  const removeContactRow = (index: number) => {
-    setContacts((prev) => prev.filter((_, i) => i !== index));
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const onSubmit = async (data: ContactGroup) => {
     if (!userId) {
       setMessage('❌ You must be logged in.');
       return;
@@ -84,99 +67,92 @@ export default function ContactGroupForm({
     setMessage('');
 
     try {
-      const cleanedContacts = contacts
-        .filter((c) => c.name.trim() && c.phone.trim())
-        .map((c) => ({
-          name: c.name.trim(),
-          phone: c.phone.trim(),
-          user_id: userId,
-        }));
+      const cleanedContacts = data.contacts.map((c) => ({
+        name: c.name.trim(),
+        phone: c.phone.trim(),
+        user_id: userId,
+      }));
+
+      let groupId = editingGroup?.id;
 
       if (!editingGroup) {
         const { data: existing, error: existsError } = await supabase
           .from('contact_groups')
           .select('id')
           .eq('user_id', userId)
-          .eq('group_name', groupName)
+          .eq('group_name', data.group_name)
           .maybeSingle();
 
         if (existsError) throw existsError;
-
         if (existing) {
-          setMessage('❌ A group with this name already exists.');
+          setMessage('A group with this name already exists.');
           setLoading(false);
           return;
         }
       }
 
-      // 1. Insert/update group
-      let groupId = editingGroup?.id;
-
       if (editingGroup) {
         const { error } = await supabase
           .from('contact_groups')
-          .update({ group_name: groupName })
-          .eq('id', groupId)
+          .update({ group_name: data.group_name })
+          .eq('id', editingGroup.id)
           .eq('user_id', userId);
         if (error) throw error;
       } else {
-        const { data, error } = await supabase
+        const { data: created, error } = await supabase
           .from('contact_groups')
-          .insert({ group_name: groupName, user_id: userId })
+          .insert({ group_name: data.group_name, user_id: userId })
           .select()
           .single();
         if (error) throw error;
-        groupId = data.id;
+        groupId = created.id;
       }
 
-      // 2. Insert or update contacts
-      const { error: insertErr } = await supabase
+      const { error: upsertError } = await supabase
         .from('contacts')
-        .upsert(cleanedContacts, {
-          onConflict: 'user_id,phone',
-        });
+        .upsert(cleanedContacts, { onConflict: 'user_id,phone' });
+      if (upsertError) throw upsertError;
 
-      if (insertErr) throw insertErr;
-
-      // 2. Re-select to get ALL contact IDs (inserted and existing)
-      const { data: allContacts, error: selectErr } = await supabase
+      const { data: allContacts, error: fetchError } = await supabase
         .from('contacts')
         .select('id,phone')
         .in(
           'phone',
           cleanedContacts.map((c) => c.phone),
         )
-        .eq('user_id', userId); // Include user filter
-
-      if (selectErr) throw selectErr;
+        .eq('user_id', userId);
+      if (fetchError) throw fetchError;
 
       const contactIds = allContacts.map((c) => c.id);
+
+      if (editingGroup) {
+        const { error: unlinkError } = await supabase
+          .from('contact_group_members')
+          .delete()
+          .eq('group_id', editingGroup.id);
+
+        if (unlinkError) throw unlinkError;
+      }
+
       const linkData = contactIds.map((contact_id) => ({
         contact_id,
         group_id: groupId,
       }));
 
-      const { error: linkErr } = await supabase
+      const { error: linkError } = await supabase
         .from('contact_group_members')
-        .upsert(linkData, {
-          onConflict: 'contact_id, group_id',
-        });
-
-      if (linkErr) throw linkErr;
+        .upsert(linkData, { onConflict: 'contact_id,group_id' });
+      if (linkError) throw linkError;
 
       setMessage('✅ Group saved!');
-      setGroupName('');
-      setContacts([{ name: '', phone: '' }]);
+      reset();
       setEditingGroup(null);
       onClose();
-
       await mutate('rpc:contacts-with-groups');
     } catch (err) {
-      if (err instanceof Error) {
-        setMessage(`❌ ${err.message}`);
-      } else {
-        setMessage('Unexpected error occurred');
-      }
+      setMessage(
+        err instanceof Error ? `❌ ${err.message}` : 'Unexpected error',
+      );
     } finally {
       setLoading(false);
     }
@@ -198,61 +174,73 @@ export default function ContactGroupForm({
         </p>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-400">
             Group Name
           </label>
           <input
             type="text"
-            required
-            value={groupName}
-            onChange={(e) => setGroupName(e.target.value)}
+            {...register('group_name')}
             className="w-full rounded-xl bg-slate-800 px-4 py-3 text-gray-100 outline-none"
             placeholder="e.g. Marketing Team"
           />
+          {errors.group_name && (
+            <p className="text-sm text-pink-400">{errors.group_name.message}</p>
+          )}
         </div>
 
         <div>
           <label className="mb-2 block text-sm font-medium text-gray-400">
             Contacts
           </label>
-          {contacts.map((contact, index) => (
-            <div key={index} className="mb-3 flex flex-wrap gap-2">
+          {fields.map((field, index) => (
+            <div key={field.id} className="mb-3 flex flex-wrap gap-2">
               <input
                 type="text"
                 placeholder="Name"
-                value={contact.name}
-                onChange={(e) =>
-                  handleContactChange(index, 'name', e.target.value)
-                }
+                {...register(`contacts.${index}.name`)}
                 className="min-w-[150px] flex-1 rounded-xl bg-slate-800 px-4 py-2 text-gray-100 outline-none"
               />
               <input
                 type="text"
                 placeholder="Phone"
-                value={contact.phone}
-                onChange={(e) =>
-                  handleContactChange(index, 'phone', e.target.value)
-                }
+                {...register(`contacts.${index}.phone`)}
                 className="min-w-[150px] flex-1 rounded-xl bg-slate-800 px-4 py-2 text-gray-100 outline-none"
               />
               <button
                 type="button"
-                onClick={() => removeContactRow(index)}
+                onClick={() => remove(index)}
                 className="rounded bg-gray-800 px-3 text-white hover:bg-gray-700"
               >
                 ✕
               </button>
+              <div className="w-full">
+                {errors.contacts?.[index]?.name && (
+                  <p className="text-sm text-pink-400">
+                    {errors.contacts[index]?.name?.message}
+                  </p>
+                )}
+                {errors.contacts?.[index]?.phone && (
+                  <p className="text-sm text-pink-400">
+                    {errors.contacts[index]?.phone?.message}
+                  </p>
+                )}
+              </div>
             </div>
           ))}
+
           <button
             type="button"
-            onClick={addContactRow}
+            onClick={() => append({ name: '', phone: '' })}
             className="mt-2 rounded-xl bg-pink-900 px-4 py-2 text-white hover:bg-pink-800"
           >
             + Add Contact
           </button>
+
+          {errors.contacts && typeof errors.contacts.message === 'string' && (
+            <p className="text-sm text-pink-400">{errors.contacts.message}</p>
+          )}
         </div>
 
         <div className="flex gap-4">
@@ -267,7 +255,6 @@ export default function ContactGroupForm({
                 ? 'Update Group'
                 : 'Create Group'}
           </button>
-
           <button
             type="button"
             onClick={() => {
