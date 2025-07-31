@@ -11,12 +11,7 @@ import {
 import TemplateForm from '../components/template/templateForm';
 import TemplateCard from '../components/template/templateCard';
 import { useAuthStore } from '../lib/WithAuth/AuthStore';
-
-type Template = {
-  id: string;
-  name: string;
-  content: string;
-};
+import { Template, TemplateWithId } from '../lib/schema/template';
 
 export default function TemplatesPage() {
   const initialized = useAuthStore((s) => s.initialized);
@@ -30,20 +25,20 @@ export default function TemplatesPage() {
     revalidateOnFocus: false,
   });
 
-  const handleCreate = async (name: string, content: string) => {
+  const handleCreate = async (label: string, content: string) => {
     setLoading(true);
     try {
-      await createTemplate({ name, content });
+      await createTemplate({ label, content });
       await mutate();
     } finally {
       setLoading(false);
     }
   };
 
-  const handleUpdate = async (id: string, name: string, content: string) => {
+  const handleUpdate = async (id: string, label: string, content: string) => {
     setLoading(true);
     try {
-      await updateTemplate(id, { name, content });
+      await updateTemplate(id, { label, content });
       await mutate();
     } finally {
       setLoading(false);
@@ -70,7 +65,7 @@ export default function TemplatesPage() {
         {templatesLoading || !initialized ? (
           <p className="col-span-full text-gray-400">Loading templates...</p>
         ) : (
-          templates.map((template: Template) => (
+          templates.map((template: TemplateWithId) => (
             <TemplateCard
               key={template.id}
               template={template}
