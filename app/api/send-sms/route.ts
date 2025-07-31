@@ -9,6 +9,9 @@ import {
 } from '../../lib/Insert-link/contact-link';
 import { ServerClient } from '../../lib/supabase/serverClient';
 import { DateTime } from 'luxon';
+import { treeifyError, ZodError } from 'zod';
+import { validateInput } from '../../lib/validation/inputV';
+import { sendSmsSchema } from '../../lib/schema/sendSms';
 
 // Redis & BullMQ setup
 const connection = new Redis(process.env.REDIS_URL!, {
@@ -34,28 +37,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ message: 'Unauthorized' }, { status: 401 });
     }
 
-    const body = await req.json();
+    const rawbody = await req.json();
+    const { data: parsed, error: validationErr } = await validateInput(
+      sendSmsSchema,
+      rawbody,
+    );
+    if (validationErr) return validationErr;
+
     const {
       to_number = [],
       message,
       scheduledAt,
       contact_group_ids = [],
-    } = body;
-
-    console.log('Incoming send-sms request:', {
-      to_number,
-      message,
-      scheduledAt,
-      contact_group_ids,
-    });
-
-    if (typeof message !== 'string' || message.trim().length === 0) {
-      console.warn('⚠️ Message is empty');
-      return NextResponse.json(
-        { message: 'Message cannot be blank.' },
-        { status: 400 },
-      );
-    }
+    } = parsed;
 
     let groupContacts = [];
     if (Array.isArray(contact_group_ids) && contact_group_ids.length > 0) {
@@ -77,13 +71,50 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const { allPhones, totalRecipients, totalSegments, segmentsPerMessage } =
-      prepareRecipients({
+    let allPhones: string[] = [];
+    let totalRecipients = 0;
+    let totalSegments = 0;
+    let segmentsPerMessage = 0;
+    try {
+      const result = prepareRecipients({
         manualNumbers: to_number,
         groupContacts,
         message,
         devMode: true,
       });
+
+      allPhones = result.allPhones;
+      totalRecipients = result.totalRecipients;
+      totalSegments = result.totalSegments;
+      segmentsPerMessage = result.segmentsPerMessage;
+    } catch (err) {
+      if (err instanceof ZodError) {
+        const tree = treeifyError(err);
+        console.warn(' Zod validation failed in prepareRecipients:');
+
+        return NextResponse.json(
+          {
+            message: 'Invalid input for recipients.',
+            issues: tree, // Contains detailed form-like errors
+          },
+          { status: 400 },
+        );
+      }
+
+      console.error('❌ prepareRecipients failed:', {
+        error: err instanceof Error ? err.message : err,
+        stack: err instanceof Error ? err.stack : null,
+      });
+
+      return NextResponse.json(
+        {
+          message: 'Invalid recipient input or message',
+          details: err instanceof Error ? err.message : String(err),
+        },
+        { status: 400 },
+      );
+    }
+
     // Step 1: Check quota before inserting message or queuing jobs
     const { data: quotaData, error: quotaError } = await supabase.rpc(
       'quota_check',

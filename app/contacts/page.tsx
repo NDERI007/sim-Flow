@@ -6,15 +6,17 @@ import ContactGroupList from '../components/Contact-comp/Group-list';
 import { useGroupedContacts } from '../lib/contactGroup';
 import ContactUploader from '../components/Contact-comp/contact-uploader';
 import Modal from '../components/modal';
-import { ContactGroup } from '../lib/smsStore';
+import { ContactGroupWithId } from '../lib/schema/contact';
 
 export default function ContactGroupsPage() {
   const { groups, error, isLoading } = useGroupedContacts();
   const [showForm, setShowForm] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<ContactGroup>(null);
+  const [editingGroup, setEditingGroup] = useState<ContactGroupWithId | null>(
+    null,
+  );
   const [showUploader, setShowUploader] = useState(false);
 
-  const handleEditGroup = (group: ContactGroup) => {
+  const handleEditGroup = (group: ContactGroupWithId) => {
     setEditingGroup(group);
     setShowForm(true);
   };

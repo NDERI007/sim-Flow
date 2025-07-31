@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ServerClient } from '../../../lib/supabase/serverClient';
+import { templateSchema } from '../../../lib/schema/template';
+import { ZodError } from 'zod';
+import { treeifyError } from 'zod';
 
 // Helper to extract `id` from request URL
 function getIdFromUrl(req: NextRequest) {
@@ -32,26 +35,51 @@ export async function PATCH(req: NextRequest) {
   }
 
   const id = getIdFromUrl(req);
-  const { name, content } = await req.json();
-
-  if (!name || !content) {
+  if (!id || typeof id !== 'string') {
     return NextResponse.json(
-      { error: 'Missing name or content' },
+      { error: 'Missing or invalid ID' },
       { status: 400 },
     );
   }
+  try {
+    const body = await req.json();
+    const parsed = templateSchema.parse(body);
+    const { label, content } = {
+      label: parsed.label.trim(),
+      content: parsed.content.trim(),
+    };
+    if (!label || !content) {
+      return NextResponse.json(
+        { error: 'Missing name or content' },
+        { status: 400 },
+      );
+    }
 
-  const { error: updateError } = await supabase
-    .from('templates')
-    .update({ name, content })
-    .eq('id', id)
-    .eq('user_id', user.id);
+    const { error: updateError } = await supabase
+      .from('templates')
+      .update({ label, content })
+      .eq('id', id)
+      .eq('user_id', user.id);
 
-  if (updateError) {
-    return NextResponse.json({ error: updateError.message }, { status: 500 });
+    if (updateError) {
+      return NextResponse.json({ error: updateError.message }, { status: 500 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (err) {
+    if (err instanceof ZodError) {
+      const tree = treeifyError(err);
+      console.warn(' Zod validation failed in templateUpdate');
+
+      return NextResponse.json(
+        {
+          message: 'Invalid input for template.',
+          issues: tree, // Contains detailed form-like errors
+        },
+        { status: 400 },
+      );
+    }
   }
-
-  return NextResponse.json({ success: true });
 }
 
 // DELETE: Remove a template

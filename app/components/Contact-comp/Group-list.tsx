@@ -3,12 +3,12 @@
 import { useState } from 'react';
 import { deleteContactGroup } from '../../lib/contactGroup';
 import ContactGroupCard from './contact-card';
-import { ContactGroup } from '../../lib/smsStore';
 import { mutate } from 'swr';
+import { ContactGroupWithId } from '../../lib/schema/contact';
 
 interface ContactGroupListProps {
-  groups: ContactGroup[];
-  onEdit?: (group: ContactGroup) => void;
+  groups: ContactGroupWithId[];
+  onEdit?: (group: ContactGroupWithId) => void;
 }
 
 export default function ContactGroupList({

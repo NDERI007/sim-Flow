@@ -1,101 +1,107 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useEffect, useRef } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useDebouncedCallback } from 'use-debounce';
+import { Template, templateSchema } from '../../lib/schema/template';
+
+const DRAFT_KEY = 'template-draft';
 
 type Props = {
   onCreate: (name: string, content: string) => Promise<void>;
   loading: boolean;
 };
 
-const DRAFT_KEY = 'template-draft';
-
 export default function TemplateForm({ onCreate, loading }: Props) {
-  const [name, setName] = useState('');
-  const [content, setContent] = useState('');
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    reset,
+    formState: { errors },
+  } = useForm<Template>({
+    resolver: zodResolver(templateSchema),
+    defaultValues: { label: '', content: '' },
+  });
+
+  const label = watch('label');
+  const content = watch('content');
+
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Hold latest values
-  const nameRef = useRef(name);
-  const contentRef = useRef(content);
-
-  // Keep refs up to date
-  useEffect(() => {
-    nameRef.current = name;
-    contentRef.current = content;
-  }, [name, content]);
-
-  // Load saved draft from localStorage
+  // Load from localStorage
   useEffect(() => {
     const saved = localStorage.getItem(DRAFT_KEY);
     if (saved) {
       try {
         const draft = JSON.parse(saved);
-        if (draft.name) setName(draft.name);
-        if (draft.content) setContent(draft.content);
+        if (draft.label) setValue('label', draft.label);
+        if (draft.content) setValue('content', draft.content);
       } catch (e) {
-        console.error('⚠️ Failed to parse saved draft', e);
+        console.error('Failed to parse saved draft', e);
       }
     }
-  }, []);
+  }, [setValue]);
 
-  // Debounced save using refs
+  // Debounced save to localStorage
   const debouncedSave = useDebouncedCallback(() => {
-    const currentName = nameRef.current.trim();
-    const currentContent = contentRef.current.trim();
+    const trimmed = {
+      label: label?.trim() || '',
+      content: content?.trim() || '',
+    };
 
-    if (currentName || currentContent) {
-      const draft = JSON.stringify({
-        name: currentName,
-        content: currentContent,
-      });
-      localStorage.setItem(DRAFT_KEY, draft);
-      console.log('💾 Auto-saved draft:', {
-        name: currentName,
-        content: currentContent,
-      });
+    if (trimmed.label || trimmed.content) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify(trimmed));
+      console.log('Auto-saved draft:', trimmed);
     }
-  }, 1000); // No dependency array
+  }, 1000);
 
   useEffect(() => {
     debouncedSave();
-  }, [name, content, debouncedSave]); // Still need to trigger on input changes
+  }, [label, content, debouncedSave]);
 
-  const handleSubmit = async () => {
-    const currentName = nameRef.current.trim();
-    const currentContent = contentRef.current.trim();
-    if (loading || !currentName || !currentContent) return;
-
-    await onCreate(currentName, currentContent);
-    setName('');
-    setContent('');
-    inputRef.current?.focus();
+  const onSubmit = async (data: Template) => {
+    if (loading) return;
+    await onCreate(data.label.trim(), data.content.trim());
+    reset(); // clears the form
     localStorage.removeItem(DRAFT_KEY);
+    inputRef.current?.focus();
   };
 
   return (
-    <div className="col-span-full space-y-2 rounded-xl bg-gray-900 p-4 shadow-lg">
+    <form
+      onSubmit={handleSubmit(onSubmit)}
+      className="col-span-full space-y-2 rounded-xl bg-gray-900 p-4 shadow-lg"
+    >
       <input
         ref={inputRef}
         type="text"
         placeholder="Template Label"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
+        {...register('label')}
         className="w-full rounded bg-gray-800 p-2 text-white placeholder-gray-400 outline-none"
       />
+      {errors.label && (
+        <p className="text-sm text-red-400">{errors.label.message}</p>
+      )}
+
       <textarea
         placeholder="Message Content"
-        value={content}
-        onChange={(e) => setContent(e.target.value)}
+        {...register('content')}
         className="w-full rounded bg-gray-800 p-2 text-white placeholder-gray-400 outline-none"
       />
+      {errors.content && (
+        <p className="text-sm text-red-400">{errors.content.message}</p>
+      )}
+
       <button
-        onClick={handleSubmit}
+        type="submit"
         disabled={loading}
         className="rounded bg-pink-900 px-4 py-2 text-white hover:bg-pink-700 disabled:opacity-50"
       >
         {loading ? 'Saving...' : 'Add Template'}
       </button>
-    </div>
+    </form>
   );
 }

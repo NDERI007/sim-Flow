@@ -6,11 +6,15 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { mutate } from 'swr';
 import { supabase } from '../../lib/supabase/BrowserClient';
 import { useAuthStore } from '../../lib/WithAuth/AuthStore';
-import { ContactGroup, ContactGroupSchema } from '../../lib/schema/contact';
+import {
+  ContactGroup,
+  ContactGroupSchema,
+  ContactGroupWithId,
+} from '../../lib/schema/contact';
 
 interface Props {
-  editingGroup: (ContactGroup & { id: string }) | null;
-  setEditingGroup: (group: ContactGroup | null) => void;
+  editingGroup: ContactGroupWithId | null;
+  setEditingGroup: (group: ContactGroupWithId | null) => void;
   onClose: () => void;
 }
 
@@ -59,7 +63,7 @@ export default function ContactGroupForm({
 
   const onSubmit = async (data: ContactGroup) => {
     if (!userId) {
-      setMessage('❌ You must be logged in.');
+      setMessage('You must be logged in.');
       return;
     }
 

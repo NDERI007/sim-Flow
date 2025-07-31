@@ -1,18 +1,6 @@
+import { PrepareRecipientsSchema } from '../schema/recipients';
 import { calculateSmsSegments } from '../smsSegm/segments';
-import { validateAndFormatKenyanNumber } from '../validator/phoneN';
-
-export type Contact = {
-  id: string;
-  phone: string;
-  group_id?: string;
-};
-
-export type PrepareRecipientsOptions = {
-  manualNumbers?: string[];
-  groupContacts?: Contact[];
-  message: string;
-  devMode?: boolean;
-};
+import { validateAndFormatKenyanNumber } from '../validation/phoneN';
 
 export type PreparedRecipientsResult = {
   allPhones: string[];
@@ -25,12 +13,14 @@ export type PreparedRecipientsResult = {
   };
 };
 
-export function prepareRecipients({
-  manualNumbers = [],
-  groupContacts = [],
-  message,
-  devMode = false,
-}: PrepareRecipientsOptions): PreparedRecipientsResult {
+export function prepareRecipients(raw: unknown): PreparedRecipientsResult {
+  const {
+    manualNumbers = [],
+    groupContacts = [],
+    message,
+    devMode = false,
+  } = PrepareRecipientsSchema.parse(raw); // Validated at runtime
+
   const formattedManual = validateAndFormatKenyanNumber(manualNumbers, {
     dev: devMode,
   });

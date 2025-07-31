@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { Trash2, Pencil, ChevronDown } from 'lucide-react';
-import { ContactGroup } from '../../lib/smsStore';
+
 import { motion } from 'framer-motion';
+import { ContactGroup } from '../../lib/schema/contact';
 
 interface ContactGroupCardProps {
   id: ContactGroup['id'];

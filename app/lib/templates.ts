@@ -6,7 +6,7 @@ export const fetchTemplates = async () => {
 };
 
 export const createTemplate = async (payload: {
-  name: string;
+  label: string;
   content: string;
 }) => {
   await axios.post('/api/templates', payload, {});
@@ -14,7 +14,7 @@ export const createTemplate = async (payload: {
 
 export const updateTemplate = async (
   id: string,
-  updates: { name: string; content: string },
+  updates: { label: string; content: string },
 ) => {
   await axios.patch(`/api/templates/${id}`, updates, {});
 };

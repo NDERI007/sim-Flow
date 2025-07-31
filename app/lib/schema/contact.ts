@@ -7,10 +7,10 @@ export const ContactSchema = z.object({
 });
 
 export const ContactGroupSchema = z.object({
-  id: z.string(),
   group_name: z.string().min(1, 'Group name is required'),
   contacts: z.array(ContactSchema).min(1, 'Atleast one contact required'),
 });
 
 export type Contact = z.infer<typeof ContactSchema>;
 export type ContactGroup = z.infer<typeof ContactGroupSchema>;
+export type ContactGroupWithId = ContactGroup & { id: string };

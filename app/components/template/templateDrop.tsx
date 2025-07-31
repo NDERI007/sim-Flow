@@ -2,17 +2,12 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
-
-type Template = {
-  id: string;
-  name: string;
-  content: string;
-};
+import { TemplateWithId } from '../../lib/schema/template';
 
 interface TemplateDropdownProps {
-  templates: Template[];
+  templates: TemplateWithId[];
   loading: boolean;
-  onSelect: (template: Template) => void;
+  onSelect: (template: TemplateWithId) => void;
   error: Error;
 }
 
@@ -57,7 +52,7 @@ export default function TemplateDropdown({
         e.preventDefault();
         const template = templates[focusedIndex];
         if (template) {
-          setSelectedName(template.name);
+          setSelectedName(template.label);
           onSelect(template);
           setOpen(false);
         }
@@ -106,7 +101,7 @@ export default function TemplateDropdown({
                 role="option"
                 aria-selected={focusedIndex === index}
                 onClick={() => {
-                  setSelectedName(template.name);
+                  setSelectedName(template.label);
                   onSelect(template);
                   setOpen(false);
                 }}
@@ -116,7 +111,7 @@ export default function TemplateDropdown({
                     : 'text-gray-200 hover:bg-zinc-800'
                 }`}
               >
-                {template.name}
+                {template.label}
               </button>
             ))
           )}

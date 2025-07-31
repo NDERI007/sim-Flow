@@ -1,7 +1,7 @@
 import { useMemo } from 'react';
 import useSWR from 'swr';
 import { supabase } from './supabase/BrowserClient';
-import type { ContactGroup } from './smsStore';
+import { ContactGroupWithId } from './schema/contact';
 
 export async function deleteContactGroup(
   id: string,
@@ -35,10 +35,10 @@ export function useGroupedContacts() {
     },
   );
 
-  const grouped: ContactGroup[] = useMemo(() => {
+  const grouped: ContactGroupWithId[] = useMemo(() => {
     if (!flatData) return [];
 
-    const map = new Map<string, ContactGroup>();
+    const map = new Map<string, ContactGroupWithId>();
 
     for (const row of flatData) {
       if (!map.has(row.group_id)) {

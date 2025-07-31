@@ -1,18 +1,38 @@
-import { useState } from 'react';
-import axios from 'axios';
+'use client';
+
 import { Wallet } from 'lucide-react';
+import axios from 'axios';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { z } from 'zod';
 
+import { useState } from 'react';
+
+const PurchaseSchema = z.object({
+  amount: z.number().min(4, 'Minimum is KES 4'),
+});
+
+type Purchase = z.infer<typeof PurchaseSchema>; // <-- derive from schema
 export default function PurchaseForm() {
-  const [amount, setAmount] = useState(100); // in KES
-  const [loading, setLoading] = useState(false);
+  const {
+    register,
+    handleSubmit,
+    watch,
+    formState: { errors, isSubmitting },
+  } = useForm<Purchase>({
+    resolver: zodResolver(PurchaseSchema),
+    defaultValues: {
+      amount: 100,
+    },
+  });
 
-  const pricePerSms = 0.5;
-  const credits = Math.floor(amount / pricePerSms);
+  const [serverError, setServerError] = useState('');
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
+  const amount = watch('amount') ?? 0;
+  const credits = Math.floor((amount || 0) / 0.5);
 
+  const onSubmit = async (values: Purchase) => {
+    setServerError('');
     try {
       const { data } = await axios.post('/api/initiate', {
         credits,
@@ -21,15 +41,13 @@ export default function PurchaseForm() {
       if (data?.authorization_url) {
         window.location.href = data.authorization_url;
       } else {
-        alert('Something went wrong.');
+        setServerError('Something went wrong.');
       }
     } catch (err) {
       console.error('Payment error:', err);
-      alert('Failed to initiate payment.');
-    } finally {
-      setLoading(false);
+      setServerError('Failed to initiate payment.');
     }
-  }
+  };
 
   return (
     <div className="mx-auto max-w-md rounded-2xl bg-zinc-900 p-6 text-white shadow-md">
@@ -39,7 +57,7 @@ export default function PurchaseForm() {
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         {/* Amount input */}
         <div>
           <label htmlFor="amount" className="mb-1 block text-sm text-zinc-300">
@@ -53,14 +71,14 @@ export default function PurchaseForm() {
               id="amount"
               type="number"
               min={4}
-              value={amount}
-              onChange={(e) => setAmount(Number(e.target.value))}
-              placeholder="Minimum 4 KES"
+              step="1"
+              placeholder="Minimum 3 KES"
+              {...register('amount', { valueAsNumber: true })}
               className="w-full rounded-md border border-zinc-700 bg-zinc-800 py-2 pr-4 pl-10 text-white placeholder-zinc-500 focus:ring-2 focus:ring-green-500 focus:outline-none"
             />
           </div>
-          {amount > 0 && amount < 4 && (
-            <p className="mt-1 text-sm text-red-500">Minimum amount is KES 3</p>
+          {errors.amount && (
+            <p className="mt-1 text-sm text-red-500">{errors.amount.message}</p>
           )}
         </div>
 
@@ -70,13 +88,16 @@ export default function PurchaseForm() {
           SMS credit{credits !== 1 ? 's' : ''}
         </div>
 
+        {/* Server error */}
+        {serverError && <p className="text-sm text-red-500">{serverError}</p>}
+
         {/* Submit */}
         <button
           type="submit"
-          disabled={loading || credits <= 0 || amount < 3}
+          disabled={isSubmitting || credits <= 0}
           className="w-full rounded-md bg-green-500 py-2 font-semibold text-white transition hover:bg-green-600 disabled:opacity-50"
         >
-          {loading ? 'Processing...' : 'Continue to Payment'}
+          {isSubmitting ? 'Processing...' : 'Continue to Payment'}
         </button>
       </form>
     </div>

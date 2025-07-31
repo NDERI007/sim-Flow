@@ -1,26 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-
-type Template = {
-  id: string;
-  name: string;
-  content: string;
-};
+import { TemplateWithId } from '../../lib/schema/template';
 
 type Props = {
-  template: Template;
+  template: TemplateWithId;
   onUpdate: (id: string, name: string, content: string) => void;
   onDelete: (id: string) => void;
 };
 
 export default function TemplateCard({ template, onUpdate, onDelete }: Props) {
   const [editing, setEditing] = useState(false);
-  const [name, setName] = useState(template.name);
+  const [name, setName] = useState(template.label);
   const [content, setContent] = useState(template.content);
 
   const handleDone = () => {
-    if (name !== template.name || content !== template.content) {
+    if (name !== template.label || content !== template.content) {
       onUpdate(template.id, name, content); // Save only if changes
     }
     setEditing(false);
@@ -49,7 +44,7 @@ export default function TemplateCard({ template, onUpdate, onDelete }: Props) {
           </button>
           <button
             onClick={() => {
-              setName(template.name);
+              setName(template.label);
               setContent(template.content);
               setEditing(false);
             }}
@@ -60,7 +55,9 @@ export default function TemplateCard({ template, onUpdate, onDelete }: Props) {
         </>
       ) : (
         <>
-          <p className="text-lg font-semibold text-gray-400">{template.name}</p>
+          <p className="text-lg font-semibold text-gray-400">
+            {template.label}
+          </p>
           <p className="text-sm text-gray-300">{template.content}</p>
           <div className="mt-2 space-x-2">
             <button
