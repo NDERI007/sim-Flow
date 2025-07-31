@@ -22,7 +22,7 @@ export function AuthGuard<P>(
         if (lastSignedIn) {
           const lastSignInDate = new Date(lastSignedIn);
           const twoMonthsAgo = new Date();
-          twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+          twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 1);
 
           if (lastSignInDate < twoMonthsAgo) {
             router.push(options.redirectTo ?? '/login');

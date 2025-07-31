@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import type { User } from '@supabase/supabase-js';
 import { supabase } from '../supabase/BrowserClient';
-import { useSmsStore } from '../smsStore';
 
 interface AuthState {
   user: User | null;

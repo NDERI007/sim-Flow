@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request });
 
@@ -20,10 +21,12 @@ export async function middleware(request: NextRequest) {
     },
   );
 
-  // Refresh session (this will auto-refresh tokens if expired)
-  const { data } = await supabase.auth.getClaims();
-  const user = data?.claims;
-  const isAuthenticated = Boolean(data?.claims?.sub); // sub = user id
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  const userId = user?.id;
+  const isAuthenticated = Boolean(userId);
 
   const protectedRoutes = [
     '/send',
@@ -37,32 +40,42 @@ export async function middleware(request: NextRequest) {
     '/mfa',
   ];
 
-  const isProtected = protectedRoutes.some((path) =>
-    request.nextUrl.pathname.startsWith(path),
-  );
+  const adminRoutes = ['/admin'];
+
+  const pathname = request.nextUrl.pathname;
+
+  const isProtected = protectedRoutes.some((path) => pathname.startsWith(path));
+  const isAdminRoute = adminRoutes.some((path) => pathname.startsWith(path));
 
   if (isProtected && !isAuthenticated) {
     const url = request.nextUrl.clone();
     url.pathname = '/unauth';
-    url.searchParams.set('redirectedFrom', request.nextUrl.pathname);
+    url.searchParams.set('redirectedFrom', pathname);
     return NextResponse.redirect(url);
   }
-  const adminRoutes = ['/admin'];
 
-  if (adminRoutes.some((route) => request.nextUrl.pathname.startsWith(route))) {
-    const { data: roleData } = await supabase
+  if (isAdminRoute) {
+    if (!userId) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/unauth';
+      url.searchParams.set('redirectedFrom', pathname);
+      return NextResponse.redirect(url);
+    }
+
+    const { data: roleData, error: roleError } = await supabase
       .from('users')
       .select('role')
-      .eq('id', user?.id)
+      .eq('id', userId)
       .single();
 
-    if (roleData?.role !== 'admin') {
+    if (roleError || roleData?.role !== 'admin') {
       return NextResponse.redirect(new URL('/unauth', request.url));
     }
   }
 
   return response;
 }
+
 // Matcher: apply to everything except static assets
 export const config = {
   matcher: [

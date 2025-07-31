@@ -15,57 +15,39 @@ export default function LoginPage() {
     e.preventDefault();
     setError('');
 
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const { data: loginData, error: loginError } =
+      await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
-      setError(error.message);
+    if (loginError || !loginData.user) {
+      setError(loginError?.message || 'Login failed.');
       return;
     }
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
+    const userId = loginData.user.id;
 
-    if (!user) {
-      setError('Unexpected error logging in');
-      return;
-    }
-
-    const { data: userRow, error: fetchError } = await supabase
+    const { data: userRow, error: mfaError } = await supabase
       .from('users')
-      .select('mfa_enabled')
-      .eq('id', user.id)
+      .select('mfa_enabled, role')
+      .eq('id', userId)
       .single();
 
-    if (fetchError) {
-      setError('Failed to verify MFA status');
+    if (mfaError) {
+      setError('Failed to retrieve user data.');
       return;
     }
 
     if (userRow?.mfa_enabled) {
-      // Redirect to MFA verification
-      router.push('mfa/verify');
+      router.push('/mfa/verify');
+      return;
+    }
+
+    if (userRow?.role === 'admin') {
+      router.push('/admin');
     } else {
-      // No MFA, proceed normally
-      const { data: roleRow, error: roleError } = await supabase
-        .from('users')
-        .select('role')
-        .eq('id', user.id)
-        .single();
-
-      if (roleError) {
-        setError('Failed to fetch user role');
-        return;
-      }
-
-      if (roleRow?.role === 'admin') {
-        router.push('/admin');
-      } else {
-        router.push('/dashboard');
-      }
+      router.push('/dashboard');
     }
   };
 
@@ -123,8 +105,9 @@ export default function LoginPage() {
         >
           Log In
         </button>
+
         <Link
-          href={'/forgot-password'}
+          href="/forgot-password"
           className="block text-center text-sm text-gray-400 hover:underline"
         >
           Forgot password?

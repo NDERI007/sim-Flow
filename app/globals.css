@@ -15,3 +15,27 @@
     }
   }
 }
+
+:root {
+  --color-primary: #3cb371; /* Leaf Green */
+  --color-secondary: #f5f3ef; /* Soft Eggshell */
+
+  --color-background: #f5f3ef; /* Main background – eggshell */
+  --color-surface: #ffffff; /* Cards or modals – clean white */
+  --color-elevation: #ece9e2; /* Slight elevation contrast */
+
+  --color-text: #1c1c1c; /* Dark charcoal for readability */
+  --color-muted: #757575; /* For secondary/descriptive text */
+  --color-heading: #0a0a0a; /* Bold headings */
+
+  --color-border: #e0ddd6; /* Light warm gray for outlines */
+  --color-divider: #dad6ce; /* For horizontal/vertical dividers */
+
+  --color-input-bg: #fff;
+  --color-input-text: #1c1c1c;
+  --color-input-placeholder: #a8a8a8;
+
+  --color-button: #3cb371; /* Same as primary */
+  --color-button-hover: #2e8b57;
+  --color-button-text: #fff;
+}

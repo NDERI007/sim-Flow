@@ -31,7 +31,7 @@ export default function PurchaseForm() {
   const amount = watch('amount') ?? 0;
   const credits = Math.floor((amount || 0) / 0.5);
 
-  const onSubmit = async (values: Purchase) => {
+  const onSubmit = async () => {
     setServerError('');
     try {
       const { data } = await axios.post('/api/initiate', {

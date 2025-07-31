@@ -18,11 +18,16 @@ export default function ForgotPasswordPage() {
     });
 
     if (error) {
-      setError(error.message);
+      if (error.message.toLowerCase().includes('rate')) {
+        setError(
+          'You’ve requested too many password resets. Please wait a few minutes and try again.',
+        );
+      } else {
+        setError(error.message);
+      }
     } else {
       setSuccess('Check your email for the reset link.');
     }
-
     setLoading(false);
   };
 
