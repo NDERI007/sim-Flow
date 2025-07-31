@@ -28,7 +28,7 @@ export default function FinishRegistrationPage() {
       );
 
       if (res.status === 200) {
-        router.push('/admin');
+        router.push('/dashboard');
       } else {
         throw new Error(res.data?.error || 'Registration Failed');
       }

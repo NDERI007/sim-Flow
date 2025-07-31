@@ -51,7 +51,7 @@ export default function MfaVerifyPage() {
       });
 
       if (res.data.success) {
-        router.replace('/admin');
+        router.replace('/dashboard');
       } else {
         setError('Invalid or expired code');
       }

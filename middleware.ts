@@ -22,6 +22,7 @@ export async function middleware(request: NextRequest) {
 
   // Refresh session (this will auto-refresh tokens if expired)
   const { data } = await supabase.auth.getClaims();
+  const user = data?.claims;
   const isAuthenticated = Boolean(data?.claims?.sub); // sub = user id
 
   const protectedRoutes = [
@@ -31,7 +32,7 @@ export async function middleware(request: NextRequest) {
     '/Reports',
     '/Quota-Usage',
     '/templates',
-    '/admin',
+    '/dashboard',
     '/scheduled',
     '/mfa',
   ];
@@ -46,10 +47,22 @@ export async function middleware(request: NextRequest) {
     url.searchParams.set('redirectedFrom', request.nextUrl.pathname);
     return NextResponse.redirect(url);
   }
+  const adminRoutes = ['/admin'];
+
+  if (adminRoutes.some((route) => request.nextUrl.pathname.startsWith(route))) {
+    const { data: roleData } = await supabase
+      .from('users')
+      .select('role')
+      .eq('id', user?.id)
+      .single();
+
+    if (roleData?.role !== 'admin') {
+      return NextResponse.redirect(new URL('/unauth', request.url));
+    }
+  }
 
   return response;
 }
-
 // Matcher: apply to everything except static assets
 export const config = {
   matcher: [

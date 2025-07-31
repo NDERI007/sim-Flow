@@ -1,11 +1,9 @@
 'use client';
 
 import useSWR from 'swr';
-import {
-  ScheduledList,
-  type ScheduledMessage,
-} from '../components/dash-comp/scheduledSends';
+import { ScheduledList } from '../components/dash-comp/scheduledSends';
 import { supabase } from '../lib/supabase/BrowserClient';
+import { ScheduledMessage } from '../lib/schema/schedule';
 
 interface RawScheduledMessage {
   id: string;
@@ -49,12 +47,15 @@ export default function ScheduledPage() {
   });
 
   if (isLoading) return <div>Loading scheduled messages...</div>;
-  if (error) return <div>Error: {error.message}</div>;
+  if (error) {
+    console.error('SWR error:', error);
+    return <div className="text-red-500">Failed to load messages.</div>;
+  }
 
   return (
     <div className="flex min-h-screen justify-center overflow-auto bg-gray-900 px-4 py-10">
       <div className="w-full max-w-xl">
-        <ScheduledList messages={messages} onDelete={() => mutate} />
+        <ScheduledList messages={messages} onDelete={() => mutate()} />
       </div>
     </div>
   );

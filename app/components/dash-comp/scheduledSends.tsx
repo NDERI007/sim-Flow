@@ -5,13 +5,7 @@ import { Trash2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { DateTime } from 'luxon';
 import { toast } from 'sonner';
-
-export interface ScheduledMessage {
-  id: string;
-  message: string;
-  scheduled_at: string;
-  group_names?: string[];
-}
+import { ScheduledMessage } from '../../lib/schema/schedule';
 
 export function ScheduledList({
   messages,

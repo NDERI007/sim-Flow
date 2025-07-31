@@ -50,7 +50,22 @@ export default function LoginPage() {
       router.push('mfa/verify');
     } else {
       // No MFA, proceed normally
-      router.push('/admin');
+      const { data: roleRow, error: roleError } = await supabase
+        .from('users')
+        .select('role')
+        .eq('id', user.id)
+        .single();
+
+      if (roleError) {
+        setError('Failed to fetch user role');
+        return;
+      }
+
+      if (roleRow?.role === 'admin') {
+        router.push('/admin');
+      } else {
+        router.push('/dashboard');
+      }
     }
   };
 

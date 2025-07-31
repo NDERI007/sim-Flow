@@ -12,6 +12,7 @@ import { DateTime } from 'luxon';
 import { treeifyError, ZodError } from 'zod';
 import { validateInput } from '../../lib/validation/inputV';
 import { sendSmsSchema } from '../../lib/schema/sendSms';
+import { notifyAdmin } from '../../lib/Notify/QuotaFailure';
 
 // Redis & BullMQ setup
 const connection = new Redis(process.env.REDIS_URL!, {
@@ -130,6 +131,14 @@ export async function POST(req: NextRequest) {
       console.warn('❌ Insufficient quota or RPC failed:', {
         quotaError,
         quotaResult,
+      });
+      await notifyAdmin({
+        subject: 'Quota Check Failed',
+        body: `
+          <p>User ID: ${user.id}</p>
+          <p>Quota Result: ${quotaResult}
+          <p>Error: ${quotaError.message}</p>
+        `,
       });
 
       return NextResponse.json(
@@ -288,6 +297,15 @@ export async function POST(req: NextRequest) {
             user_id: user.id,
             message_id: messageRow.id,
             error: quotaError.message,
+          });
+          await notifyAdmin({
+            subject: 'Quota deduction Failed',
+            body: `
+          <p>User ID: ${user.id}</p>
+          <p>Message ID: ${messageRow.id}
+          <p>Message: ${messageRow.message}
+          <p>Error: ${quotaError.message}</p>
+        `,
           });
         }
 

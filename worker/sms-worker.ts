@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js';
 import { DateTime } from 'luxon';
 import dotenv from 'dotenv';
 import { sendSmsOnfon } from './lib/onfon.js';
+import { notifyAdmin } from './lib/QuotaFailure.js';
 
 dotenv.config();
 
@@ -132,6 +133,15 @@ smsWorker.on('completed', (job) => {
 smsWorker.on('failed', async (job, err) => {
   if (!job) return;
 
+  await notifyAdmin({
+    subject: `SMS Worker Job Failed: ${job.id}`,
+    body: `
+    <p>Error encountered before retries were evaluated.</p>
+    <p><strong>Error:</strong> ${err.message}</p>
+    <p><strong>Job Data:</strong> ${JSON.stringify(job.data)}</p>
+  `,
+  });
+
   console.error(`Job ${job.id} failed:`, err.message);
 
   const isRetriable =
@@ -227,10 +237,19 @@ smsWorker.on('failed', async (job, err) => {
     });
 
     if (refundError) {
-      console.error('⚠️ Quota refund failed:', refundError.message);
+      console.error('Quota refund failed:', refundError.message);
+      await notifyAdmin({
+        subject: 'Quota refund Failed',
+        body: `
+                  <p>User ID: ${user_id}</p>
+                  <p>RefundAmount: ${refundAmount}
+                  <p>Message: ${job.data.message}
+                  <p>Error: ${refundError.message}</p>
+                `,
+      });
     } else {
       console.log(
-        `💰 Refunded quota for ${nonRetriableContacts.length} non-retriable failed recipients.`,
+        `Refunded quota for ${nonRetriableContacts.length} non-retriable failed recipients.`,
       );
     }
   }
