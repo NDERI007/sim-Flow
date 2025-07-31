@@ -4,12 +4,12 @@ import { useState } from 'react';
 import { Trash2, Pencil, ChevronDown } from 'lucide-react';
 
 import { motion } from 'framer-motion';
-import { ContactGroup } from '../../lib/schema/contact';
+import { ContactGroupWithId } from '../../lib/schema/contact';
 
 interface ContactGroupCardProps {
-  id: ContactGroup['id'];
-  group_name: ContactGroup['group_name'];
-  contacts: ContactGroup['contacts'];
+  id: ContactGroupWithId['id'];
+  group_name: ContactGroupWithId['group_name'];
+  contacts: ContactGroupWithId['contacts'];
   onDelete: () => void;
   isDeleting?: boolean;
   onEdit?: () => void;
