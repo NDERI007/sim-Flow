@@ -11,7 +11,7 @@ import {
 import TemplateForm from '../components/template/templateForm';
 import TemplateCard from '../components/template/templateCard';
 import { useAuthStore } from '../lib/WithAuth/AuthStore';
-import { Template, TemplateWithId } from '../lib/schema/template';
+import { TemplateWithId } from '../lib/schema/template';
 
 export default function TemplatesPage() {
   const initialized = useAuthStore((s) => s.initialized);
