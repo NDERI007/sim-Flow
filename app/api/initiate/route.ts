@@ -75,7 +75,6 @@ export async function POST(req: NextRequest) {
     });
 
     const paystackData = await res.json();
-    console.log('📦 Paystack full response:', paystackData);
 
     if (!paystackData.status || !paystackData.data?.authorization_url) {
       return NextResponse.json(

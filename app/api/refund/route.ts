@@ -68,7 +68,7 @@ export async function POST(req: NextRequest) {
     });
   } catch (err: unknown) {
     const parsed = parsePaystackError(err);
-    console.error('❌ Refund error:', parsed);
+    console.error('Refund error:', parsed);
 
     return NextResponse.json(
       {

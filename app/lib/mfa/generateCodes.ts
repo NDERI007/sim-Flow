@@ -24,16 +24,6 @@ export async function generateRecoveryCodes(): Promise<{
     return { success: false, error: 'User not found' };
   }
 
-  const { data: userRow } = await supabase
-    .from('users')
-    .select('recovery_codes_generated')
-    .eq('id', user.id)
-    .single();
-
-  if (userRow?.recovery_codes_generated) {
-    return { success: false, error: 'Already generated' };
-  }
-
   const newCodes = Array.from({ length: 10 }, () => nanoid(10).toUpperCase());
   const hashedCodes = await Promise.all(newCodes.map(hashSHA256));
 

@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     const rawbody = await req.json();
-    console.log('📦 Backend received:', rawbody);
+
     const { data: parsed, error: validationErr } = await validateInput(
       sendSmsSchema,
       rawbody,
@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
       try {
         groupContacts = await fetchGroupContacts(supabase, contact_group_ids);
       } catch (err) {
-        console.error('❌ fetchGroupContacts failed:', {
+        console.error('fetchGroupContacts failed:', {
           error: err instanceof Error ? err.message : err,
           stack: err instanceof Error ? err.stack : null,
           contact_group_ids,
@@ -103,7 +103,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      console.error('❌ prepareRecipients failed:', {
+      console.error('prepareRecipients failed:', {
         error: err instanceof Error ? err.message : err,
         stack: err instanceof Error ? err.stack : null,
       });
@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
         groupContacts,
         to_number,
       });
-      console.log('✅ Message inserted with ID:', messageRow.id);
+      console.log('✅Message inserted');
     } catch (err) {
       console.error('❌ insertMessage failed:', {
         error: err instanceof Error ? err.message : err,
@@ -225,19 +225,11 @@ export async function POST(req: NextRequest) {
 
     if (isScheduled) {
       const delayMs = parseLocalTime(scheduledAt).getTime() - Date.now();
-      const maxDelay = 1000 * 60 * 60 * 24 * 2; // 2 days in ms
       console.log(
         'Parsed Nairobi Time:',
         DateTime.fromJSDate(parseLocalTime(scheduledAt)).toISO(),
       );
       console.log('Now:', DateTime.now().setZone('Africa/Nairobi').toISO());
-
-      if (delayMs > maxDelay) {
-        return NextResponse.json(
-          { message: 'Scheduled time cannot exceed 2 days from now.' },
-          { status: 400 },
-        );
-      }
 
       cappedDelay = Math.max(0, delayMs);
     }

@@ -10,6 +10,10 @@ import {
   Typography,
   Button,
   CircularProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from '@mui/material';
 import { supabase } from '../lib/supabase/BrowserClient';
 import { toast } from 'sonner';
@@ -21,6 +25,7 @@ export default function MfaSettings() {
   const [step, setStep] = useState<'setup' | 'verify' | null>(null);
   const [regenerating, setRegenerating] = useState(false);
   const [disabling, setDisabling] = useState(false);
+  const [ConfirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     const checkStatus = async () => {
@@ -62,26 +67,6 @@ export default function MfaSettings() {
     }
 
     setDisabling(false);
-  };
-
-  const handleRegenerateCodes = async () => {
-    setRegenerating(true);
-    const result = await generateRecoveryCodes();
-
-    if (result.success && result.codes) {
-      const blob = new Blob([result.codes.join('\n')], { type: 'text/plain' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'recovery-codes.txt';
-      a.click();
-      URL.revokeObjectURL(url);
-      toast.success('Recovery codes regenerated');
-    } else {
-      toast.error(result.error || 'Something went wrong');
-    }
-
-    setRegenerating(false);
   };
 
   if (loading) return null;
@@ -135,7 +120,7 @@ export default function MfaSettings() {
                     <Button
                       variant="contained"
                       color="primary"
-                      onClick={handleRegenerateCodes}
+                      onClick={() => setConfirmOpen(true)}
                       disabled={regenerating}
                       fullWidth
                     >
@@ -161,6 +146,48 @@ export default function MfaSettings() {
           </CardContent>
         </Card>
       </div>
+      <Dialog open={ConfirmOpen} onClose={() => setConfirmOpen(false)}>
+        <DialogTitle>Regenerate Recovery Codes</DialogTitle>
+        <DialogContent>
+          <Typography>
+            This will replace your existing recovery codes. You won&apos;t be
+            able to use the old ones. Do you want to continue?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)} color="secondary">
+            Cancel
+          </Button>
+          <Button
+            onClick={async () => {
+              setConfirmOpen(false);
+              setRegenerating(true);
+              const result = await generateRecoveryCodes();
+
+              if (result.success && result.codes) {
+                const blob = new Blob([result.codes.join('\n')], {
+                  type: 'text/plain',
+                });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'recovery-codes.txt';
+                a.click();
+                URL.revokeObjectURL(url);
+                toast.success('Recovery codes regenerated');
+              } else {
+                toast.error(result.error || 'Something went wrong');
+              }
+
+              setRegenerating(false);
+            }}
+            color="primary"
+            autoFocus
+          >
+            Confirm
+          </Button>
+        </DialogActions>
+      </Dialog>
     </div>
   );
 }

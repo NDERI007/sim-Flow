@@ -45,13 +45,17 @@ export default function RefundModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
       <div className="w-full max-w-sm rounded-xl bg-gray-900 p-6 text-white shadow-lg">
-        <h2 className="mb-2 text-lg font-semibold text-red-300">
+        <h2 className="mb-2 text-lg font-semibold text-gray-400">
           Request Refund
         </h2>
         <p className="text-sm">Refund for transaction:</p>
+        <p></p>
         <code className="mb-4 block truncate text-xs text-indigo-300">
           {transactionRef}
         </code>
+        <p className="mb-4 text-xs text-lime-300">
+          Note: Refunds typically take 7 to 12 business days to process
+        </p>
 
         {error && <p className="mb-2 text-xs text-red-400">{error}</p>}
 

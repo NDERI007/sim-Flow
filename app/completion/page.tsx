@@ -45,12 +45,12 @@ export default function FinishRegistrationPage() {
   };
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-zinc-900 text-white">
+    <main className="flex min-h-screen items-center justify-center bg-gray-900 text-white">
       <form
         onSubmit={handleSubmit}
-        className="w-full max-w-md space-y-6 rounded-xl bg-zinc-800 p-8 shadow-xl"
+        className="w-full max-w-md space-y-6 rounded-xl bg-gray-800 p-8 shadow-xl"
       >
-        <h2 className="text-center text-2xl font-bold text-pink-900">
+        <h2 className="text-center text-2xl font-semibold text-gray-300">
           Complete Registration
         </h2>
 
@@ -64,7 +64,7 @@ export default function FinishRegistrationPage() {
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
-          className="w-full rounded bg-zinc-700 px-3 py-2 text-white"
+          className="w-full rounded bg-gray-700 px-3 py-2 text-white focus:outline-none"
         />
 
         <button
