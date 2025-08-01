@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { Mail, Phone } from 'lucide-react';
 
 export default function Home() {
   return (
