@@ -5,10 +5,7 @@ import axios from 'axios';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-
 import { useState } from 'react';
-import { useAuthStore } from '../../lib/WithAuth/AuthStore';
-import { toast } from 'sonner';
 
 const PurchaseSchema = z.object({
   amount: z.number().min(4, 'Minimum is KES 4'),
@@ -29,13 +26,6 @@ export default function PurchaseForm() {
   });
 
   const [serverError, setServerError] = useState('');
-  const { user, hydrated } = useAuthStore();
-
-  if (!hydrated) {
-    toast.loading('Checking session...');
-    return null;
-  }
-  if (!user) return <div>Please log in to view your purchases.</div>;
 
   const amount = watch('amount') ?? 0;
   const credits = Math.floor((amount || 0) / 0.5);
