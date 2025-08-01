@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
         metadata: {
           credits,
         },
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/purchase?status=success`,
+        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL!}/purchase?status=success`,
       }),
     });
 
