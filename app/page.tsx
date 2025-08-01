@@ -1,40 +1,39 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState, useRef } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
 import { Mail, Phone } from 'lucide-react';
 
 export default function Home() {
-  const containerRef = useRef(null);
-  const { scrollYProgress } = useScroll({ container: containerRef });
-
-  const y1 = useTransform(scrollYProgress, [0, 1], [0, 400]);
-  const y2 = useTransform(scrollYProgress, [0, 1], [0, -300]);
-
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
-
   return (
-    <main
-      ref={containerRef}
-      className="relative min-h-screen bg-[#1e1b2e] text-white"
-    >
+    <main className="relative min-h-screen bg-[#1e1b2e] text-white">
       {/* Navigation */}
-      <div className="sticky top-0 z-50 flex h-16 items-center justify-end gap-4 bg-transparent px-6 backdrop-blur-sm">
-        <Link
-          href="/login"
-          className="rounded-xl bg-indigo-500/80 px-5 py-2.5 text-sm font-medium text-white shadow-md backdrop-blur-md transition hover:bg-indigo-400/90"
-        >
-          Login
-        </Link>
-        <Link
-          href="/register"
-          className="rounded-xl bg-indigo-500/80 px-5 py-2.5 text-sm font-medium text-white shadow-md backdrop-blur-md transition hover:bg-indigo-400/90"
-        >
-          Get Started
-        </Link>
-      </div>
+      <header className="sticky top-0 z-50 bg-transparent backdrop-blur-sm">
+        <div className="flex h-16 items-center justify-between px-6">
+          {/* Brand name */}
+          <Link
+            href="/"
+            className="text-xl font-bold tracking-wide text-white transition hover:text-indigo-300"
+          >
+            boushu
+          </Link>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-4">
+            <Link
+              href="/login"
+              className="rounded-xl bg-indigo-500/80 px-5 py-2.5 text-sm font-medium text-white shadow-md backdrop-blur-md transition hover:bg-indigo-400/90"
+            >
+              Login
+            </Link>
+            <Link
+              href="/register"
+              className="rounded-xl bg-indigo-500/80 px-5 py-2.5 text-sm font-medium text-white shadow-md backdrop-blur-md transition hover:bg-indigo-400/90"
+            >
+              Get Started
+            </Link>
+          </div>
+        </div>
+      </header>
 
       {/* Hero */}
       <section className="flex min-h-[calc(100vh-4rem)] items-center justify-center px-6 text-center">
@@ -50,52 +49,32 @@ export default function Home() {
         </h1>
       </section>
 
-      {/* Parallax Background */}
-      {mounted && (
-        <motion.div className="pointer-events-none absolute inset-0 z-0">
-          <motion.div style={{ y: y1 }} className="absolute top-10 left-10">
-            <svg
-              viewBox="0 0 100 100"
-              className="h-40 w-40 fill-purple-600 opacity-10"
-            >
-              <polygon points="50,0 100,100 0,100" />
-            </svg>
-          </motion.div>
-          <motion.div style={{ y: y2 }} className="absolute right-20 bottom-40">
-            <svg
-              viewBox="0 0 100 100"
-              className="h-32 w-32 fill-pink-400 opacity-10"
-            >
-              <rect width="100" height="100" />
-            </svg>
-          </motion.div>
-        </motion.div>
-      )}
+      <footer className="bg-[#1a1929] px-6 py-12 text-white">
+        <div className="mx-auto max-w-4xl px-4 text-center sm:px-6 lg:px-8">
+          <h2 className="mb-4 text-xl font-bold text-white sm:text-5xl">
+            Get in touch
+          </h2>
 
-      {/* Footer */}
-      <footer className="border-t border-[#2a273f] bg-[#1a1929] px-6 py-12 text-center">
-        <h2 className="mb-4 text-4xl font-semibold text-purple-200">
-          Get in Touch
-        </h2>
-        <p className="mx-auto mb-8 max-w-xl text-lg text-slate-400">
-          Have questions, feedback, or need support? Reach out anytime.
-        </p>
-        <div className="flex flex-col justify-center gap-4 text-white md:flex-row">
-          <a
-            href="mailto:support@yourdomain.com"
-            className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 transition hover:bg-indigo-500"
-          >
-            <Mail />
-            will do
-          </a>
-          <p className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 transition hover:bg-indigo-500">
-            <Phone size={18} />
-            +254 790504636
+          <p className="mb-8 text-base text-slate-400 sm:text-lg">
+            Have any questions, feedback, or need help? Reach out to us and
+            we’ll get back to you as soon as we can.
           </p>
-          <p className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-6 py-3 transition hover:bg-indigo-500">
-            <Phone size={18} />
-            +254 727 942764
-          </p>
+
+          <div className="mt-12 border-t border-[#2a273f] pt-8 text-center text-sm text-slate-500">
+            <div className="mb-4">
+              <span className="block md:inline">Tel +254 790 504636</span>
+              <span className="mx-2 hidden md:inline">|</span>
+              <span className="block md:inline">Tel: +254 727 942764</span>
+            </div>
+            <div className="mb-2">
+              <a
+                href="mailto:support@yourdomain.com"
+                className="hover:underline"
+              >
+                support@yourdomain.com
+              </a>
+            </div>
+          </div>
         </div>
       </footer>
     </main>
