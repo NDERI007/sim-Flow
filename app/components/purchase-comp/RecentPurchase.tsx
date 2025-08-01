@@ -5,6 +5,8 @@ import { DateTime } from 'luxon';
 import { useRecentPurchases } from '../../lib/Recents/purchases';
 import RefundModal from './RefundModal';
 import { useState } from 'react';
+import { useAuthStore } from '../../lib/WithAuth/AuthStore';
+import { toast } from 'sonner';
 
 export default function RecentPurchase() {
   const { purchases, loading, error } = useRecentPurchases();
@@ -14,9 +16,15 @@ export default function RecentPurchase() {
 
   const openRefundModal = (ref: string) => setSelectedTransaction(ref);
   const closeRefundModal = () => setSelectedTransaction(null);
+  const { user, hydrated } = useAuthStore();
 
-  if (loading)
-    return <p className="text-sm text-gray-400">Loading purchases...</p>;
+  if (!hydrated) {
+    toast.loading('Checking session...');
+    return null;
+  }
+  if (!user) return <div>Please log in to view your purchases.</div>;
+
+  if (loading) return;
   if (error) {
     console.error('Failed to fetch recent purchases:', error);
     return <p className="text-sm text-red-400">Failed to load purchases</p>;
