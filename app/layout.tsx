@@ -1,12 +1,9 @@
-'use client';
 import './globals.css';
 import { Inter } from 'next/font/google';
 import { SpeedInsights } from '@vercel/speed-insights/next';
-import CompanyHeader from './components/companyHeader';
-import { usePathname } from 'next/navigation';
-
 import { Toaster } from 'sonner';
 import { AuthWrapper } from './lib/WithAuth/AuthListner';
+import ShowHeaderClient from './components/ShowHeader';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -19,23 +16,10 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const pathname = usePathname();
-
-  const HeaderOn = [
-    '/send',
-    '/purchase',
-    '/contacts',
-    '/Reports',
-    '/Quota-Usage',
-    '/templates',
-    '/scheduled',
-    '/settings',
-  ];
-  const showHeader = HeaderOn.includes(pathname);
   return (
     <html lang="en">
       <body className={`${inter.className} bg-white text-gray-900`}>
-        {showHeader && <CompanyHeader />}
+        <ShowHeaderClient />
         <AuthWrapper />
         {children}
         <Toaster richColors />
