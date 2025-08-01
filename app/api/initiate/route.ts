@@ -49,12 +49,18 @@ export async function POST(req: NextRequest) {
         { status: 500 },
       );
     }
+    if (!process.env.PAYSTACK_SECRET_KEY) {
+      return NextResponse.json(
+        { error: 'Paystack secret key is not configured' },
+        { status: 500 },
+      );
+    }
 
     // Call Paystack to initialize transaction
     const res = await fetch('https://api.paystack.co/transaction/initialize', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY}`,
+        Authorization: `Bearer ${process.env.PAYSTACK_SECRET_KEY!}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -64,11 +70,12 @@ export async function POST(req: NextRequest) {
         metadata: {
           credits,
         },
-        callback_url: `${process.env.NEXT_PUBLIC_BASE_URL}/purchase?status=success`,
+        callback_url: 'http://localhost:3000/purchase?status=success',
       }),
     });
 
     const paystackData = await res.json();
+    console.log('📦 Paystack full response:', paystackData);
 
     if (!paystackData.status || !paystackData.data?.authorization_url) {
       return NextResponse.json(

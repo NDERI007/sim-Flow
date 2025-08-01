@@ -33,19 +33,47 @@ export default function PurchaseForm() {
 
   const onSubmit = async () => {
     setServerError('');
+
     try {
-      const { data } = await axios.post('/api/initiate', {
-        credits,
-      });
+      const { data } = await axios.post('/api/initiate', { credits });
 
       if (data?.authorization_url) {
         window.location.href = data.authorization_url;
+      } else if (data?.error) {
+        // Handle known backend errors
+        setServerError(`Failed to initiate payment: ${data.error}`);
       } else {
-        setServerError('Something went wrong.');
+        setServerError('Unexpected response from Paystack. Please try again.');
       }
     } catch (err) {
       console.error('Payment error:', err);
-      setServerError('Failed to initiate payment.');
+
+      if (axios.isAxiosError(err)) {
+        const res = err.response?.data;
+
+        // 🧠 Handle Zod-style backend validation issues
+        if (res?.issues) {
+          const issueList = Object.entries(res.issues)
+            .map(([field, msg]) => `${field}: ${msg}`)
+            .join('\n');
+          setServerError(`Validation Error:\n${issueList}`);
+          return;
+        }
+
+        // Handle Paystack-specific failure
+        if (res?.error?.includes('Paystack')) {
+          setServerError(`Payment error: ${res.error}`);
+          return;
+        }
+
+        setServerError(
+          res?.error ||
+            res?.message ||
+            'Something went wrong while initiating payment.',
+        );
+      } else {
+        setServerError('An unknown error occurred. Please try again.');
+      }
     }
   };
 

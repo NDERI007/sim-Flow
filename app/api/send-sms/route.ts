@@ -39,6 +39,7 @@ export async function POST(req: NextRequest) {
     }
 
     const rawbody = await req.json();
+    console.log('📦 Backend received:', rawbody);
     const { data: parsed, error: validationErr } = await validateInput(
       sendSmsSchema,
       rawbody,
@@ -213,17 +214,23 @@ export async function POST(req: NextRequest) {
       contact_map[number] = null;
     }
 
-    function UTCtoLocalInput(input: string): Date {
-      return DateTime.fromISO(input, { zone: 'Africa/Nairobi' }).toJSDate();
+    function parseLocalTime(input: string): Date {
+      return DateTime.fromFormat(input, "yyyy-MM-dd'T'HH:mm", {
+        zone: 'Africa/Nairobi',
+      }).toJSDate();
     }
 
-    const isScheduled =
-      scheduledAt && UTCtoLocalInput(scheduledAt) > new Date();
+    const isScheduled = scheduledAt && parseLocalTime(scheduledAt) > new Date();
     let cappedDelay = 0;
 
     if (isScheduled) {
-      const delayMs = UTCtoLocalInput(scheduledAt).getTime() - Date.now();
+      const delayMs = parseLocalTime(scheduledAt).getTime() - Date.now();
       const maxDelay = 1000 * 60 * 60 * 24 * 2; // 2 days in ms
+      console.log(
+        'Parsed Nairobi Time:',
+        DateTime.fromJSDate(parseLocalTime(scheduledAt)).toISO(),
+      );
+      console.log('Now:', DateTime.now().setZone('Africa/Nairobi').toISO());
 
       if (delayMs > maxDelay) {
         return NextResponse.json(

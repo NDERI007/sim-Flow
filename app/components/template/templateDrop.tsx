@@ -2,23 +2,24 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import useSWR from 'swr';
+import { fetchTemplates } from '../../lib/templates';
 import { TemplateWithId } from '../../lib/schema/template';
 
 interface TemplateDropdownProps {
-  templates: TemplateWithId[];
-  loading: boolean;
   onSelect: (template: TemplateWithId) => void;
-  error: Error;
 }
 
-export default function TemplateDropdown({
-  templates,
-  loading,
-  onSelect,
-}: TemplateDropdownProps) {
+export default function TemplateDropdown({ onSelect }: TemplateDropdownProps) {
   const [open, setOpen] = useState(false);
   const [selectedName, setSelectedName] = useState('');
   const [focusedIndex, setFocusedIndex] = useState(0);
+
+  const {
+    data: templates = [],
+    isLoading,
+    error,
+  } = useSWR(open ? 'templates' : null, fetchTemplates);
 
   const dropdownRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
@@ -38,7 +39,7 @@ export default function TemplateDropdown({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!open) return;
+      if (!open || !templates.length) return;
 
       if (e.key === 'ArrowDown') {
         e.preventDefault();
@@ -75,7 +76,7 @@ export default function TemplateDropdown({
         type="button"
         onClick={() => {
           setOpen((prev) => !prev);
-          setFocusedIndex(0); // Reset focus to first item
+          setFocusedIndex(0);
         }}
         className="flex w-full items-center justify-between rounded-lg border border-gray-700 bg-gray-900 px-4 py-2 text-sm text-white shadow focus:ring-2 focus:ring-pink-900"
       >
@@ -89,8 +90,10 @@ export default function TemplateDropdown({
           className="absolute z-20 mt-2 max-h-64 w-full overflow-y-auto rounded-lg border border-zinc-700 bg-zinc-900 shadow-lg"
           role="listbox"
         >
-          {loading ? (
+          {isLoading ? (
             <p className="p-4 text-sm text-gray-400">Loading templates...</p>
+          ) : error ? (
+            <p className="p-4 text-sm text-red-400">Failed to load templates</p>
           ) : templates.length === 0 ? (
             <p className="p-4 text-sm text-gray-400">No templates found</p>
           ) : (

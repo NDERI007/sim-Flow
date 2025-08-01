@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import axios from 'axios';
 import useSWR from 'swr';
-import { UserRecord } from '../lib/schema/User';
+import { UserRecord } from '../../lib/schema/User';
 
 export default function AdminUserList() {
   const { data, mutate, error, isLoading } = useSWR<UserRecord[]>(

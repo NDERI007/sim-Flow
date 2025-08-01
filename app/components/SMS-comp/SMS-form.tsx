@@ -2,9 +2,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { fetchTemplates } from '../../lib/templates';
-import { useAuthStore } from '../../lib/WithAuth/AuthStore';
-import useSWR from 'swr';
 import axios from 'axios';
 import { CalendarClock } from 'lucide-react';
 import TemplateDropdown from '../template/templateDrop';
@@ -13,13 +10,6 @@ import { smsFormSchema, SmsFormValues } from '../../lib/schema/sms';
 
 export default function SmsForm() {
   const [feedback, setFeedback] = useState('');
-  const initialized = useAuthStore((s) => s.initialized);
-
-  const {
-    data: templates = [],
-    isLoading: loadingTemplates,
-    error: templatesError,
-  } = useSWR(initialized ? 'templates' : null, fetchTemplates);
 
   const {
     register,
@@ -37,10 +27,13 @@ export default function SmsForm() {
       selectedGroup: [],
     },
   });
+  console.log('Errors:', errors);
 
   const selectedGroup = watch('selectedGroup');
 
   const onSubmit = async (data: SmsFormValues) => {
+    console.log('Submitting', data);
+
     const manualList =
       data.manualNumbers
         ?.split(/[\n,]+/)
@@ -61,15 +54,15 @@ export default function SmsForm() {
       const res = await axios.post('/api/send-sms', {
         to_number: manualList,
         message: data.message,
-        scheduledAt: data.scheduledAt || null,
-        contact_group_ids: selectedGroup.length > 0 ? selectedGroup : null,
+        scheduledAt: data.scheduledAt || '',
+        contact_group_ids: selectedGroup.length > 0 ? selectedGroup : [],
       });
 
       if (res.status !== 200) {
         throw new Error(res.data?.error || 'Failed to send SMS');
       }
 
-      setFeedback('Message queued successfully!');
+      setFeedback('✅ Message queued successfully!');
       reset({
         manualNumbers: '',
         message: '',
@@ -77,9 +70,31 @@ export default function SmsForm() {
         selectedGroup: [],
       });
     } catch (err) {
-      const msg =
-        err instanceof Error ? err.message : 'Unexpected error occurred';
-      setFeedback(`${msg}`);
+      let msg = 'Unexpected error occurred';
+
+      if (axios.isAxiosError(err) && err.response) {
+        const { message, issues, error: apiError } = err.response.data || {};
+
+        // ✅ Set main message
+        msg = message || apiError || err.response.statusText;
+
+        // ✅ If Zod-like issues exist, show them nicely
+        if (issues && typeof issues === 'object') {
+          const issueList = Object.entries(issues)
+            .map(([field, issue]) => `• ${field}: ${issue}`)
+            .join('\n');
+          msg += `\n\n${issueList}`;
+          console.warn('🔍 Validation issues:\n', issueList);
+        }
+
+        if (err.response.status === 400) {
+          console.warn('⚠️ 400 Bad Request:', err.response.data);
+        }
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+
+      setFeedback(msg);
     }
   };
 
@@ -110,10 +125,7 @@ export default function SmsForm() {
         )}
 
         <TemplateDropdown
-          templates={templates}
-          loading={loadingTemplates}
           onSelect={(template) => setValue('message', template.content)}
-          error={templatesError}
         />
 
         <label className="mt-4 mb-2 block text-sm font-medium text-gray-500">
@@ -139,6 +151,9 @@ export default function SmsForm() {
           className="w-full rounded-md bg-[#1a1a1a] p-2 text-white outline-none focus:ring-2 focus:ring-pink-900"
         />
       </div>
+      {errors.scheduledAt && (
+        <p className="text-red-500">{errors.scheduledAt.message}</p>
+      )}
 
       {feedback && (
         <p
