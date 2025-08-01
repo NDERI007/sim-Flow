@@ -30,7 +30,6 @@ export async function middleware(request: NextRequest) {
 
   const protectedRoutes = [
     '/send',
-    '/purchase',
     '/contacts',
     '/Reports',
     '/Quota-Usage',
