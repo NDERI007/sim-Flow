@@ -2,7 +2,6 @@
 
 import LogOutAdmin from '../components/admin-comp/AdLogOut';
 import AdminUserList from '../components/admin-comp/adminList';
-import LogOutButton from '../components/LogOut';
 
 export default function AdminUsersPage() {
   return (
