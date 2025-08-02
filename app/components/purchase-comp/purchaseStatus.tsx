@@ -1,42 +1,30 @@
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { toast } from 'sonner';
 
 export function PurchaseStatus() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const [status, setStatus] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-
   useEffect(() => {
-    const s = searchParams.get('status');
-    const e = searchParams.get('error');
+    const status = searchParams.get('status');
+    const error = searchParams.get('reason');
 
-    if (s) setStatus(decodeURIComponent(s));
-    if (e) setError(decodeURIComponent(e));
+    if (status === 'success') {
+      toast.success('Purchase successful!');
+    } else if (status === 'error') {
+      toast.error(decodeURIComponent(error ?? 'Payment failed'));
+    }
 
-    if (s || e) {
+    if (status) {
       const timeout = setTimeout(() => {
-        router.replace('/purchase');
+        router.replace('/purchase'); // Clean up the URL
       }, 3000);
       return () => clearTimeout(timeout);
     }
   }, [searchParams, router]);
 
-  return (
-    <>
-      {status && (
-        <div className="mb-4 rounded-lg bg-green-600 px-4 py-3 text-white shadow">
-          ✅ {status}
-        </div>
-      )}
-      {error && (
-        <div className="mb-4 rounded-lg bg-red-600 px-4 py-3 text-white shadow">
-          ❌ {error}
-        </div>
-      )}
-    </>
-  );
+  return null; // No need to render anything
 }

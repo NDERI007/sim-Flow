@@ -99,7 +99,7 @@ export async function POST(req: NextRequest) {
   // Delete pending registration
   await supabase.from('pending_registrations').delete().eq('id', pending.id);
 
-  // ✅ Set sb-access-token and sb-refresh-token
+  // Set sb-access-token and sb-refresh-token
   res.cookies.set('sb-access-token', auth.session.access_token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
     path: '/',
   });
 
-  // ✅ Clean up verify token
+  // Clean up verify token
   res.cookies.set('verify_token', '', {
     maxAge: 0,
     path: '/',
