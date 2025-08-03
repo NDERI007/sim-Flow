@@ -32,6 +32,7 @@ export async function middleware(request: NextRequest) {
     '/send',
     '/contacts',
     '/Reports',
+    '/purchase',
     '/Quota-Usage',
     '/templates',
     '/dashboard',

@@ -259,11 +259,24 @@ process.on('SIGTERM', shutdown);
 process.on('SIGINT', shutdown);
 
 async function shutdown() {
-  console.log('Shutting down gracefully...');
+  console.log('SIGTERM received. Draining jobs...');
+
+  const timeout = setTimeout(() => {
+    // sets a manual timeout failsafe.
+    console.warn('⏱ Timeout reached. Forcing exit.');
+    process.exit(1);
+  }, 85_000); //After 85 seconds, the process will forcefully exit with code 1.
+  //This protects against a hanging shutdown — e.g., if smsWorker.close() never resolves.
+
   try {
-    await smsWorker.close();
+    await smsWorker.pause(true); //The true parameter makes it wait until all workers (in a cluster) are paused before continuing
+    await smsWorker.close(); // wait for running jobs
+    clearTimeout(timeout); //Cancels the timeout we set earlier (no need to force quit anymore).
+    console.log('✅ Graceful shutdown complete.');
+    process.exit(0);
   } catch (e) {
-    console.error('Error during shutdown:', e);
+    //If anything inside the try fails (e.g. Redis error, unhandled job failure), we catch the error and exit with a failure code (1).
+    console.error('❌ Shutdown error:', e); //This logs the error and helps debug why the shutdown wasn't clean.
+    process.exit(1);
   }
-  process.exit(0);
 }
