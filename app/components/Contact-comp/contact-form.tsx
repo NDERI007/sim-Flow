@@ -11,6 +11,7 @@ import {
   ContactGroupSchema,
   ContactGroupWithId,
 } from '../../lib/schema/contact';
+import { toast } from 'sonner';
 
 interface Props {
   editingGroup: ContactGroupWithId | null;
@@ -25,7 +26,7 @@ export default function ContactGroupForm({
 }: Props) {
   const { user } = useAuthStore();
   const userId = user?.id;
-  const [message, setMessage] = useState('');
+
   const [loading, setLoading] = useState(false);
 
   const {
@@ -63,12 +64,11 @@ export default function ContactGroupForm({
 
   const onSubmit = async (data: ContactGroup) => {
     if (!userId) {
-      setMessage('You must be logged in.');
+      toast.error('You must be logged in.');
       return;
     }
 
     setLoading(true);
-    setMessage('');
 
     try {
       const cleanedContacts = data.contacts.map((c) => ({
@@ -89,7 +89,7 @@ export default function ContactGroupForm({
 
         if (existsError) throw existsError;
         if (existing) {
-          setMessage('A group with this name already exists.');
+          toast.error('A group with this name already exists.');
           setLoading(false);
           return;
         }
@@ -148,15 +148,13 @@ export default function ContactGroupForm({
         .upsert(linkData, { onConflict: 'contact_id,group_id' });
       if (linkError) throw linkError;
 
-      setMessage('✅ Group saved!');
+      toast.success('Group saved!');
       reset();
       setEditingGroup(null);
       onClose();
       await mutate('rpc:contacts-with-groups');
     } catch (err) {
-      setMessage(
-        err instanceof Error ? `❌ ${err.message}` : 'Unexpected error',
-      );
+      toast.error(err instanceof Error ? err.message : 'Unexpected error');
     } finally {
       setLoading(false);
     }
@@ -167,16 +165,6 @@ export default function ContactGroupForm({
       <h2 className="mb-6 text-2xl font-semibold">
         {editingGroup ? 'Edit Group' : 'Create New Group'}
       </h2>
-
-      {message && (
-        <p
-          className={`mb-4 font-medium ${
-            message.includes('✅') ? 'text-green-500' : 'text-pink-400'
-          }`}
-        >
-          {message}
-        </p>
-      )}
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
         <div>

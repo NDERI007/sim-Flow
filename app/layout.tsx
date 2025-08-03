@@ -22,7 +22,7 @@ export default function RootLayout({
         <ShowHeaderClient />
         <AuthWrapper />
         {children}
-        <Toaster richColors />
+        <Toaster richColors position="top-right" />
         <SpeedInsights />
       </body>
     </html>

@@ -84,11 +84,11 @@ export default function SmsForm() {
             .map(([field, issue]) => `• ${field}: ${issue}`)
             .join('\n');
           msg += `\n\n${issueList}`;
-          console.warn('🔍 Validation issues:\n', issueList);
+          console.warn('Validation issues:\n', issueList);
         }
 
         if (err.response.status === 400) {
-          console.warn('⚠️ 400 Bad Request:', err.response.data);
+          console.warn('400 Bad Request:', err.response.data);
         }
       } else if (err instanceof Error) {
         msg = err.message;
