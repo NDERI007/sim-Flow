@@ -65,14 +65,6 @@ export default function Home() {
               <span className="mx-2 hidden md:inline">|</span>
               <span className="block md:inline">Tel: +254 727 942764</span>
             </div>
-            <div className="mb-2">
-              <a
-                href="mailto:support@yourdomain.com"
-                className="hover:underline"
-              >
-                support@yourdomain.com
-              </a>
-            </div>
           </div>
         </div>
       </footer>
